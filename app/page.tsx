@@ -48,6 +48,12 @@ const NAV_ITEMS = [
   { id: 'reports', label: 'Rapports', icon: 'fileText' },
   { id: 'prets', label: 'Prêts', icon: 'prets' },
   { id: 'fonds', label: 'Caisse', icon: 'fonds' },
+  {
+  id: 'rotations',
+  label: 'Rotations',
+  icon: 'calendar'
+},
+
 ];
 
 // ==========================================
@@ -144,7 +150,9 @@ const ConfirmModal = ({ isOpen, title, onConfirm, onCancel }) => {
 // COMPOSANT PRINCIPAL
 // ==========================================
 
-export default function App() {
+export default function App() { const isReadOnlyLink =
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("mode") === "read";
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [allUsers, setAllUsers] = useState([]);
@@ -152,13 +160,13 @@ export default function App() {
   const [members, setMembers] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [loans, setLoans] = useState([]);
-  const [rotations, setRotations] = useState([]);
   const [currency, setCurrency] = useState('FCFA');
   const [isLoading, setIsLoading] = useState(true);
   const [globalFilter, setGlobalFilter] = useState({ memberId: '', date: '' });
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeMeetingDate, setActiveMeetingDate] = useState("");
-  
+  const [rotations, setRotations] = useState([]);
+
   const [confirmState, setConfirmState] = useState({ 
     isOpen: false, 
     title: '', 
@@ -169,7 +177,9 @@ export default function App() {
   const [authForm, setAuthForm] = useState({ email: '', password: '' });
   const [authError, setAuthError] = useState('');
 
-  const isVisionOnly = profile?.role === 'member';
+  const isVisionOnly =
+  profile?.role === "member" || isReadOnlyLink;
+
   const dataOwnerId = profile?.role === 'member' ? (profile.presidentId || '') : (profile?.uid || '');
   const isPremium = profile?.status === 'pro';
   const themeGradient = isPremium ? 'from-amber-500 to-amber-600' : 'from-indigo-600 to-indigo-800';
@@ -247,6 +257,27 @@ export default function App() {
       await updateDoc(doc(db, 'artifacts', NJANGI_APP_ID, 'public', 'data', 'users', user.uid), { role: 'member', presidentId: target.uid }); 
     }
   };
+  const handleAddRotation = ({ date, hostMemberId, beneficiaryMemberId }) => {
+  if (isVisionOnly || !user?.uid) return;
+
+  setRotations(prev => [
+    ...prev,
+    {
+      date,
+      hostMemberId,
+      beneficiaryMemberId,
+      presidentId: user.uid
+    }
+  ]);
+};
+const handleDeleteRotation = (index) => {
+  if (isVisionOnly) return;
+
+  setRotations(prev =>
+    prev.filter((_, i) => i !== index)
+  );
+};
+
 
   // AUTH HOOK
   useEffect(() => {
@@ -370,7 +401,16 @@ export default function App() {
                {currentPage === 'members' && <MembersView members={members} onDelete={handleDelete} isVisionOnly={isVisionOnly} onUpdate={handleUpdateMember} />}
                {currentPage === 'reports' && <ReportsView members={members} transactions={transactions} rotations={rotations} loans={loans} currency={currency} themeGradient={themeGradient} defaultDate={activeMeetingDate} />}
                {currentPage === 'finances' && <FinancesView transactions={filteredTransactions} allTransactions={transactions} members={members} currency={currency} onDelete={handleDelete} onUpdate={handleUpdateTransaction} isVisionOnly={isVisionOnly} activeMeetingDate={activeMeetingDate} />}
-               
+               {currentPage === 'rotations' && (
+  <RotationsView
+    members={members}
+    rotations={rotations}
+    onAddRotation={handleAddRotation}
+    isVisionOnly={isVisionOnly}
+    onDeleteRotation={handleDeleteRotation}
+  />
+)}
+
                {currentPage === 'fonds' && (
                 <div className="space-y-4">
                    <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-wrap gap-4 items-center animate-in fade-in">
@@ -879,17 +919,18 @@ const LoansView = ({ members, loans, currency, onAdd, onDelete, isVisionOnly, th
 
 const SettingsView = ({ currency, setCurrency, profile, onUpgrade, isAdmin, allUsers, onApprove, onCancel, onAdminDelete, isVisionOnly }) => {
   const [exp, setExp] = useState('');
-  const copyInvitation = () => { 
-    if (!profile) return; 
-    const link = `${window.location.origin}${window.location.pathname}?join=${profile.uid}`; 
-    const el = document.createElement('textarea'); 
-    el.value = link; 
-    document.body.appendChild(el); 
-    el.select(); 
-    document.execCommand('copy'); 
-    document.body.removeChild(el); 
-    alert("Lien d'invitation copié !");
-  };
+ const copyInvitation = () => {
+  if (!profile) return;
+
+  const link =
+    window.location.origin +
+    window.location.pathname +
+    `?join=${profile.uid}&mode=read`;
+
+  navigator.clipboard.writeText(link);
+  alert("Lien en lecture seule copié !");
+};
+ 
 
   return (
     <div className="space-y-4 lg:space-y-10 pb-20">
@@ -922,6 +963,131 @@ const SettingsView = ({ currency, setCurrency, profile, onUpgrade, isAdmin, allU
           </div>
       </div>
       {isAdmin && (<div className="bg-white p-6 lg:p-10 rounded-[2rem] border-4 border-indigo-100 shadow-xl"><h2 className="text-xs font-black uppercase text-indigo-600 mb-6">Admin Panel</h2><div className="overflow-x-auto"><table className="w-full text-left"><thead><tr className="text-[9px] uppercase text-slate-400"><th>Email</th><th>Échéance</th><th className="text-right">Actions</th></tr></thead><tbody className="divide-y divide-slate-100">{(allUsers || []).map(u => (<tr key={u.uid}><td className="py-4 text-xs font-bold text-slate-800"><div className="flex items-center gap-2">{u.status === 'pending' && <div className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span></div>}{String(u.email)}</div></td><td className="py-4 text-[10px] font-black text-indigo-600">{String(u.expiryDate || 'N/A')}</td><td className="py-4 text-right space-x-2"><input type="date" className="p-1 border rounded text-[10px]" onChange={e=>setExp(e.target.value)} /><button onClick={() => onApprove(u.uid, exp || new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0])} className="bg-emerald-600 text-white px-2 py-1 rounded text-[8px] font-black uppercase">Activer</button><button onClick={() => onAdminDelete(u.uid)} className="bg-rose-500 text-white px-2 py-1 rounded text-[8px] font-black uppercase shadow-sm"><Icon name="trash" className="w-3 h-3" /></button></td></tr>))}</tbody></table></div></div>)}
+    </div>
+  );
+};
+
+const RotationsView = ({
+  members,
+  rotations,
+  onAddRotation,
+  onDeleteRotation,
+  isVisionOnly,
+}) => {
+  const [date, setDate] = useState('');
+  const [host, setHost] = useState('');
+  const [beneficiary, setBeneficiary] = useState('');
+
+  if (!members) {
+    return <div className="p-6 text-slate-400">Chargement des membres…</div>;
+  }
+
+  return (
+    <div className="space-y-6">
+
+      {/* ========================= */}
+      {/* FORMULAIRE DE PLANIFICATION */}
+      {/* ========================= */}
+      {!isVisionOnly && (
+        <div className="bg-white p-6 rounded-2xl border shadow-sm space-y-4">
+          <h2 className="font-black uppercase">Programmer une réunion</h2>
+
+          <input
+            type="date"
+            value={date}
+            onChange={e => setDate(e.target.value)}
+            className="w-full p-3 border rounded-xl"
+          />
+
+          <select
+            value={host}
+            onChange={e => setHost(e.target.value)}
+            className="w-full p-3 border rounded-xl"
+          >
+            <option value="">Membre hôte</option>
+            {(members || []).map(m => (
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={beneficiary}
+            onChange={e => setBeneficiary(e.target.value)}
+            className="w-full p-3 border rounded-xl"
+          >
+            <option value="">Membre bénéficiaire</option>
+            {(members || []).map(m => (
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
+            ))}
+          </select>
+
+          <button
+            onClick={() => {
+              if (!date || !host || !beneficiary) return;
+
+              onAddRotation({
+                date,
+                hostMemberId: host,
+                beneficiaryMemberId: beneficiary,
+              });
+
+              // reset formulaire
+              setDate('');
+              setHost('');
+              setBeneficiary('');
+            }}
+            className="w-full bg-indigo-600 text-white p-3 rounded-xl font-black uppercase text-xs"
+          >
+            Ajouter la planification
+          </button>
+        </div>
+      )}
+
+      {/* ========================= */}
+      {/* LISTE DES ROTATIONS */}
+      {/* ========================= */}
+      <div className="bg-white p-6 rounded-2xl border shadow-sm space-y-3">
+        <h2 className="font-black uppercase">Rotations programmées</h2>
+
+        {(rotations || []).length === 0 && (
+          <p className="text-xs text-slate-400 italic">
+            Aucune rotation programmée
+          </p>
+        )}
+
+        {(rotations || []).map((r, i) => {
+          const hostName =
+            members.find(m => m.id === r.hostMemberId)?.name || '—';
+
+          const beneficiaryName =
+            members.find(m => m.id === r.beneficiaryMemberId)?.name || '—';
+
+          return (
+            <div
+              key={i}
+              className="flex items-center justify-between text-xs border-b py-2"
+            >
+              <div>
+                📅 {r.date} — Hôte : <b>{hostName}</b> — Bénéficiaire :{' '}
+                <b>{beneficiaryName}</b>
+              </div>
+
+              {!isVisionOnly && (
+                <button
+                  onClick={() => onDeleteRotation(i)}
+                  className="text-rose-500 font-black uppercase text-[10px]"
+                >
+                  Supprimer
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 };
