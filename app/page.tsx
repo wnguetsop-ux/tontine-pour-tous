@@ -18,22 +18,25 @@ import {
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
   sendPasswordResetEmail,
-  signOut
+  signOut,
+  signInWithCustomToken,
+  signInAnonymously
 } from 'firebase/auth';
 
 // ==========================================
-// CONFIGURATION FIREBASE
+// CONFIGURATION FIREBASE DYNAMIQUE
 // ==========================================
 const firebaseConfig = {
-  apiKey: "AIzaSyBb_KTvST27dxa3x2IHxUN-sM93OIUC9bc",
-  authDomain: "njangihub.firebaseapp.com",
-  projectId: "njangihub",
-  storageBucket: "njangihub.firebasestorage.app",
-  messagingSenderId: "368327077656",
-  appId: "1:368327077656:web:07a30b14c56e01531bf86d"
+  apiKey: "AIzaSyD1uU27aXfdcVaRWAxmj8Md-fQld7E48Dc",
+  authDomain: "tontine-pour-tous.firebaseapp.com",
+  projectId: "tontine-pour-tous",
+  storageBucket: "tontine-pour-tous.firebasestorage.app",
+  messagingSenderId: "49437145671",
+  appId: "1:49437145671:web:bda8e0747ec16283600f62",
+  measurementId: "G-VCQB93KYZB"
 };
 
-const NJANGI_APP_ID = "tontine_pour_tous_v1";
+const NJANGI_APP_ID = typeof __app_id !== 'undefined' ? __app_id : "tontine_pour_tous_v1";
 const ADMIN_EMAIL = "wnguetsop@gmail.com";
 const WHATSAPP_SUPPORT = "00393299639430";
 const MOMO_NUMBER = "00237674095062"; 
@@ -103,7 +106,13 @@ const ActionButton = ({ onClick, label, className = "", icon }) => {
     e.preventDefault(); e.stopPropagation();
     if (loading) return;
     setLoading(true);
-    try { await onClick(); } finally { setLoading(false); }
+    try { 
+      await onClick(); 
+    } catch (err) {
+      console.error("Action error:", err);
+    } finally { 
+      setLoading(false); 
+    }
   };
   return (
     <button onClick={handleAction} disabled={loading} className={`relative flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-80 overflow-hidden cursor-pointer ${className}`}>
@@ -164,8 +173,10 @@ export default function App() {
   const [authForm, setAuthForm] = useState({ email: '', password: '' });
   const [authError, setAuthError] = useState('');
 
+  // Détermination des permissions basées uniquement sur le profil utilisateur
   const isVisionOnly = profile?.role === 'member';
   const dataOwnerId = profile?.role === 'member' ? (profile.presidentId || '') : (profile?.uid || '');
+  
   const isPremium = profile?.status === 'pro';
   const themeGradient = isPremium ? 'from-amber-500 to-amber-600' : 'from-indigo-600 to-indigo-800';
 
@@ -174,11 +185,16 @@ export default function App() {
   
   const handleAddMember = async (name) => { 
     if (isVisionOnly || !user?.uid) return; 
-    await addDoc(collection(db, 'artifacts', NJANGI_APP_ID, 'public', 'data', 'members'), { 
-      name, 
-      joinDate: new Date().toISOString().split('T')[0], 
-      presidentId: user.uid 
-    }); 
+    try {
+      await addDoc(collection(db, 'artifacts', NJANGI_APP_ID, 'public', 'data', 'members'), { 
+        name, 
+        joinDate: new Date().toISOString().split('T')[0], 
+        presidentId: user.uid 
+      }); 
+    } catch (e) {
+      console.error("Erreur lors de l'ajout du membre:", e);
+      throw e;
+    }
   };
   
   const handleUpdateMember = async (id, newName) => { if (isVisionOnly) return; await updateDoc(doc(db, 'artifacts', NJANGI_APP_ID, 'public', 'data', 'members', id), { name: newName }); };
@@ -256,6 +272,19 @@ export default function App() {
 
   // AUTH HOOK
   useEffect(() => {
+    const initAuth = async () => {
+      try {
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+          await signInAnonymously(auth);
+        }
+      } catch (e) {
+        console.error("Auth init error:", e);
+      }
+    };
+    initAuth();
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
       if (firebaseUser) {
@@ -285,11 +314,11 @@ export default function App() {
       users: collection(db, 'artifacts', NJANGI_APP_ID, 'public', 'data', 'users')
     };
     
-    const unsubMembers = onSnapshot(paths.members, (snap) => setMembers(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(m => m.presidentId === dataOwnerId)));
-    const unsubTransactions = onSnapshot(paths.transactions, (snap) => setTransactions(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(t => t.presidentId === dataOwnerId)));
-    const unsubLoans = onSnapshot(paths.loans, (snap) => setLoans(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(l => l.presidentId === dataOwnerId)));
-    const unsubRotations = onSnapshot(paths.rotations, (snap) => setRotations(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(r => r.presidentId === dataOwnerId)));
-    const unsubUsers = onSnapshot(paths.users, (snap) => setAllUsers(snap.docs.map(d => d.data())));
+    const unsubMembers = onSnapshot(paths.members, (snap) => setMembers(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(m => m.presidentId === dataOwnerId)), (e) => console.error(e));
+    const unsubTransactions = onSnapshot(paths.transactions, (snap) => setTransactions(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(t => t.presidentId === dataOwnerId)), (e) => console.error(e));
+    const unsubLoans = onSnapshot(paths.loans, (snap) => setLoans(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(l => l.presidentId === dataOwnerId)), (e) => console.error(e));
+    const unsubRotations = onSnapshot(paths.rotations, (snap) => setRotations(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(r => r.presidentId === dataOwnerId)), (e) => console.error(e));
+    const unsubUsers = onSnapshot(paths.users, (snap) => setAllUsers(snap.docs.map(d => d.data())), (e) => console.error(e));
 
     return () => { unsubMembers(); unsubTransactions(); unsubLoans(); unsubRotations(); unsubUsers(); };
   }, [user, dataOwnerId]);
@@ -353,7 +382,10 @@ export default function App() {
       <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-slate-100 shrink-0">
         <div className="p-8 flex items-center gap-2 mb-8"><div className={`p-2 rounded-xl shadow-lg text-white ${isPremium ? 'bg-amber-500' : 'bg-indigo-600'}`}><Icon name="dashboard" /></div><span className="text-xl font-black text-slate-800 uppercase leading-none">Tontine<br/><span className={`${isPremium ? 'text-amber-500' : 'text-indigo-600'} text-[10px]`}>pour tous</span></span></div>
         <nav className="flex-1 px-4 space-y-1 overflow-y-auto">{NAV_ITEMS.map((item) => (<button key={item.id} onClick={() => setCurrentPage(item.id)} className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${currentPage === item.id ? 'bg-slate-50 text-indigo-700 border border-slate-100 shadow-sm' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}><div className={`p-1.5 rounded-lg transition-colors ${currentPage === item.id ? (isPremium ? 'bg-amber-500' : 'bg-indigo-600') : 'bg-slate-50'}`}><Icon name={item.icon} className={`w-3.5 h-3.5 ${currentPage === item.id ? 'text-white' : 'text-slate-400'}`} /></div><span className="truncate">{item.label}</span></button>))}</nav>
-        <div className="p-6 border-t border-slate-50"><button onClick={() => setCurrentPage('settings')} className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl text-[10px] font-black uppercase ${currentPage === 'settings' ? 'bg-slate-50 text-indigo-600' : 'text-slate-400'}`}><Icon name="settings" /> <span>Paramètres</span></button><button onClick={handleLogout} className="w-full flex items-center gap-4 px-4 py-3 rounded-xl text-[10px] font-black uppercase text-rose-500 hover:bg-rose-50 transition-all"><Icon name="logout" /> <span>Quitter</span></button></div>
+        <div className="p-6 border-t border-slate-50">
+          <button onClick={() => setCurrentPage('settings')} className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl text-[10px] font-black uppercase ${currentPage === 'settings' ? 'bg-slate-50 text-indigo-600' : 'text-slate-400'}`}><Icon name="settings" /> <span>Paramètres</span></button>
+          <button onClick={handleLogout} className="w-full flex items-center gap-4 px-4 py-3 rounded-xl text-[10px] font-black uppercase text-rose-500 hover:bg-rose-50 transition-all"><Icon name="logout" /> <span>Quitter</span></button>
+        </div>
       </aside>
       
       <main className="flex-1 flex flex-col relative overflow-hidden h-full">
@@ -436,6 +468,7 @@ const DashboardView = ({ stats, members, currency, isVisionOnly, onAddMember, on
   const [op, setOp] = useState({ mId: '', amt: '', type: 'cotisation', dir: 'in', method: 'cash' });
   const [showAddModal, setShowAddModal] = useState(false);
   const [nameInput, setNameInput] = useState('');
+  const [isConfirming, setIsConfirming] = useState(false);
 
   return (
     <div className="space-y-4 lg:space-y-8 animate-in fade-in slide-in-from-bottom-6 duration-500">
@@ -452,15 +485,15 @@ const DashboardView = ({ stats, members, currency, isVisionOnly, onAddMember, on
 
       {!activeMeetingDate ? (
         <div className="bg-amber-50 p-10 rounded-[3rem] border-2 border-dashed border-amber-200 text-center animate-pulse">
-           <Icon name="bell" className="w-12 h-12 text-amber-500 mx-auto mb-4" />
-           <h3 className="text-xl font-black uppercase text-amber-700">Aucune réunion active</h3>
-           <p className="text-xs text-amber-600 max-w-sm mx-auto mt-2">Sélectionnez une date ci-dessus pour activer les fonctionnalités.</p>
+            <Icon name="bell" className="w-12 h-12 text-amber-500 mx-auto mb-4" />
+            <h3 className="text-xl font-black uppercase text-amber-700">Aucune réunion active</h3>
+            <p className="text-xs text-amber-600 max-w-sm mx-auto mt-2">Sélectionnez une date ci-dessus pour activer les fonctionnalités.</p>
         </div>
       ) : (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-6">
               {!isVisionOnly && (
-                <div onClick={() => setShowAddModal(true)} className={`cursor-pointer bg-gradient-to-br ${themeGradient} p-4 lg:p-6 rounded-[1.5rem] lg:rounded-[2rem] shadow-xl text-white relative overflow-hidden group border-4 border-white/20 active:scale-95 transition-all`}>
+                <div onClick={() => { setShowAddModal(true); setIsConfirming(false); }} className={`cursor-pointer bg-gradient-to-br ${themeGradient} p-4 lg:p-6 rounded-[1.5rem] lg:rounded-[2rem] shadow-xl text-white relative overflow-hidden group border-4 border-white/20 active:scale-95 transition-all`}>
                   <p className="text-[8px] lg:text-[10px] font-black uppercase tracking-widest opacity-80 mb-1">Gestion</p>
                   <h3 className="text-base lg:text-xl font-black">Inscrire Membre</h3>
                   <div className="absolute -bottom-2 -right-2 opacity-20 group-hover:scale-110"><Icon name="plus" className="w-16 h-16 lg:w-20 lg:h-20" /></div>
@@ -510,14 +543,55 @@ const DashboardView = ({ stats, members, currency, isVisionOnly, onAddMember, on
 
       {showAddModal && (
         <div className="fixed inset-0 z-[300] flex items-center justify-center p-6 animate-in zoom-in-95">
-            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={() => setShowAddModal(false)}></div>
-            <div className="relative w-full max-w-sm bg-white rounded-[2.5rem] p-8 shadow-2xl">
-               <h2 className="text-xl font-black uppercase mb-6 text-slate-800">Nouveau Membre</h2>
-               <input type="text" placeholder="Nom complet..." value={nameInput} onChange={e=>setNameInput(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold mb-4 outline-none shadow-inner text-slate-900" />
-               <div className="flex gap-3">
-                 <button onClick={() => setShowAddModal(false)} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black text-[10px] uppercase">Annuler</button>
-                 <ActionButton onClick={async () => { if(!nameInput.trim()) return; await onAddMember(nameInput.trim()); setNameInput(''); setShowAddModal(false); }} label="Enregistrer" className="flex-1 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase shadow-lg shadow-indigo-100" />
-               </div>
+            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={() => { if(!isConfirming) setShowAddModal(false); }}></div>
+            <div className="relative w-full max-w-sm bg-white rounded-[2.5rem] p-8 shadow-2xl overflow-hidden">
+               <h2 className="text-xl font-black uppercase mb-6 text-slate-800">
+                {isConfirming ? "Confirmer Inscription" : "Nouveau Membre"}
+               </h2>
+
+               {!isConfirming ? (
+                 <div className="animate-in fade-in slide-in-from-right-4 duration-300">
+                    <input 
+                      type="text" 
+                      placeholder="Nom complet..." 
+                      value={nameInput} 
+                      onChange={e=>setNameInput(e.target.value)} 
+                      className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold mb-4 outline-none shadow-inner text-slate-900" 
+                    />
+                    <div className="flex gap-3">
+                      <button onClick={() => setShowAddModal(false)} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black text-[10px] uppercase transition-all active:scale-95">Annuler</button>
+                      <button 
+                        onClick={() => { if(nameInput.trim()) setIsConfirming(true); }} 
+                        className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase shadow-lg shadow-indigo-100 transition-all active:scale-95"
+                      >
+                        Enregistrer
+                      </button>
+                    </div>
+                 </div>
+               ) : (
+                 <div className="animate-in fade-in slide-in-from-left-4 duration-300">
+                    <p className="text-[11px] text-slate-500 mb-8 leading-relaxed">
+                      Voulez-vous vraiment enregistrer le membre <strong className="text-indigo-600">{nameInput}</strong> ?
+                    </p>
+                    <div className="flex gap-3">
+                      <button onClick={() => setIsConfirming(false)} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black text-[10px] uppercase transition-all active:scale-95">Retour</button>
+                      <ActionButton 
+                        onClick={async () => { 
+                          try {
+                            await onAddMember(nameInput.trim()); 
+                            setNameInput(''); 
+                            setIsConfirming(false);
+                            setShowAddModal(false); 
+                          } catch (e) {
+                            console.error("Failed to add member:", e);
+                          }
+                        }} 
+                        label="Confirmer" 
+                        className="flex-1 bg-emerald-600 text-white rounded-2xl font-black text-[10px] uppercase shadow-lg shadow-emerald-100" 
+                      />
+                    </div>
+                 </div>
+               )}
             </div>
         </div>
       )}
