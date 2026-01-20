@@ -10,7 +10,8 @@ import {
   doc, 
   onSnapshot, 
   updateDoc,
-  setDoc
+  setDoc,
+  query
 } from 'firebase/firestore';
 import { 
   getAuth, 
@@ -24,7 +25,7 @@ import {
 } from 'firebase/auth';
 
 // ==========================================
-// CONFIGURATION FIREBASE DYNAMIQUE
+// CONFIGURATION FIREBASE
 // ==========================================
 const firebaseConfig = {
   apiKey: "AIzaSyD1uU27aXfdcVaRWAxmj8Md-fQld7E48Dc",
@@ -38,22 +39,13 @@ const firebaseConfig = {
 
 const NJANGI_APP_ID = typeof __app_id !== 'undefined' ? __app_id : "tontine_pour_tous_v1";
 const ADMIN_EMAIL = "wnguetsop@gmail.com";
-const WHATSAPP_SUPPORT = "00393299639430";
+const WHATSAPP_SUPPORT = "00393299639430"; 
 const MOMO_NUMBER = "00237674095062"; 
+const FREE_MEMBER_LIMIT = 10; // Limite de membres pour la version gratuite
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
 const db = getFirestore(app);
-
-const NAV_ITEMS = [
-  { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
-  { id: 'members', label: 'Membres', icon: 'members' },
-  { id: 'finances', label: 'Finances', icon: 'cotisations' },
-  { id: 'reports', label: 'Rapports', icon: 'fileText' },
-  { id: 'prets', label: 'Prêts', icon: 'prets' },
-  { id: 'rotations', label: 'Rotations', icon: 'share' },
-  { id: 'fonds', label: 'Caisse', icon: 'fonds' },
-];
 
 // ==========================================
 // UTILITAIRES
@@ -85,13 +77,13 @@ const Icon = ({ name, className = "w-5 h-5" }) => {
     fileText: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />,
     share: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />,
     edit: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />,
-    check: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />,
-    bell: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />,
-    filter: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />,
     dots: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" />,
-    shield: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />,
     calendar: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />,
-    home: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />,
+    print: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />,
+    phone: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />,
+    whatsapp: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.414 0 .018 5.396 0 12.032c0 2.12.542 4.19 1.578 6.041L0 24l6.105-1.603a11.82 11.82 0 005.94 1.577h.005c6.632 0 12.028-5.396 12.033-12.034a11.81 11.81 0 00-3.527-8.421" />,
+    arrowUp: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />,
+    lock: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />,
   };
   return <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className={className}>{icons[name] || null}</svg>;
 };
@@ -100,48 +92,560 @@ const Icon = ({ name, className = "w-5 h-5" }) => {
 // COMPOSANTS UI ATOMIQUES
 // ==========================================
 
-const ActionButton = ({ onClick, label, className = "", icon }) => {
+function ActionButton({ onClick, label, className = "", icon }) {
   const [loading, setLoading] = useState(false);
   const handleAction = async (e) => {
     e.preventDefault(); e.stopPropagation();
     if (loading) return;
     setLoading(true);
-    try { 
-      await onClick(); 
-    } catch (err) {
-      console.error("Action error:", err);
-    } finally { 
-      setLoading(false); 
-    }
+    try { await onClick(); } catch (err) { console.error(err); }
+    finally { setLoading(false); }
   };
   return (
-    <button onClick={handleAction} disabled={loading} className={`relative flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-80 overflow-hidden cursor-pointer ${className}`}>
+    <button onClick={handleAction} disabled={loading} className={`relative flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-80 cursor-pointer ${className}`}>
       {!loading ? (
-          <span className="flex items-center gap-2 animate-in fade-in">{icon && <Icon name={icon} className="w-4 h-4" />} {String(label)}</span>
+        <span className="flex items-center gap-2">{icon && <Icon name={icon} className="w-4 h-4" />} {String(label)}</span>
       ) : (
-          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
       )}
     </button>
   );
-};
+}
 
-const ConfirmModal = ({ isOpen, title, onConfirm, onCancel }) => {
+function ConfirmModal({ isOpen, title, onConfirm, onCancel }) {
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 animate-in fade-in duration-300">
       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onCancel}></div>
-      <div className="relative w-full max-w-xs bg-white rounded-[2.5rem] shadow-2xl p-8 text-center animate-in zoom-in-95 duration-200">
+      <div className="relative w-full max-w-xs bg-white rounded-[2.5rem] shadow-2xl p-8 text-center text-slate-800">
         <div className="w-16 h-16 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-6"><Icon name="trash" className="w-8 h-8" /></div>
-        <h3 className="text-sm font-black text-slate-800 uppercase tracking-tight mb-2">Confirmation</h3>
+        <h3 className="text-sm font-black uppercase mb-2">Confirmation</h3>
         <p className="text-xs text-slate-500 mb-8 px-2 leading-relaxed">{String(title)}</p>
         <div className="flex gap-3">
-          <button onClick={onCancel} className="flex-1 py-4 bg-slate-100 rounded-2xl text-[10px] font-black uppercase text-slate-500 active:scale-95 transition-all">Annuler</button>
-          <button onClick={onConfirm} className="flex-1 py-4 bg-rose-500 rounded-2xl text-[10px] font-black uppercase text-white active:scale-95 transition-all shadow-lg">Supprimer</button>
+          <button onClick={onCancel} className="flex-1 py-4 bg-slate-100 rounded-2xl text-[10px] font-black uppercase text-slate-500">Annuler</button>
+          <button onClick={onConfirm} className="flex-1 py-4 bg-rose-500 rounded-2xl text-[10px] font-black uppercase text-white shadow-lg">Supprimer</button>
         </div>
       </div>
     </div>
   );
-};
+}
+
+function GenericHistory({ title, transactions, members, currency, onDelete, onUpdate, isVisionOnly }) {
+  const edit = (id, old) => { const next = prompt("Montant :", old.toString()); if (next && !isNaN(Number(next))) onUpdate(id, Number(next)); };
+  const grouped = (transactions || []).reduce((groups, t) => { const date = String(t.date || 'Inconnue'); if (!groups[date]) groups[date] = []; groups[date].push(t); return groups; }, {});
+  const sortedDates = Object.keys(grouped).sort((a, b) => new Date(b) - new Date(a));
+  return (
+    <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden text-slate-800">
+      {title && <div className="p-5 border-b bg-slate-50/50 font-black uppercase text-[10px] text-slate-500"><h3>{String(title)}</h3></div>}
+      {sortedDates.length === 0 ? <div className="p-8 text-center text-slate-400 text-[10px] font-bold uppercase">Aucune donnée</div> : sortedDates.map(date => (
+          <div key={date} className="border-b last:border-none">
+            <div className="bg-slate-50/30 px-4 py-2 text-[8px] font-black text-slate-400 uppercase tracking-tighter">{String(date)}</div>
+            <table className="w-full text-left text-[11px]"><tbody className="divide-y divide-slate-50">{grouped[date].map((t) => (
+                  <tr key={t.id} className="hover:bg-slate-50 text-slate-800"><td className="px-4 py-3 font-bold">{members.find((m)=>m.id===t.memberId)?.name || '...'}</td><td className={`px-4 py-3 text-right font-black ${t.amount >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{t.amount >= 0 ? '+' : ''}{formatCurrency(t.amount, currency)}</td>{!isVisionOnly && <td className="px-4 py-3 text-right space-x-1"><button onClick={() => edit(t.id, t.amount)} className="p-1 text-slate-300 hover:text-indigo-600"><Icon name="edit" className="w-4 h-4" /></button><button onClick={() => onDelete('transactions', t.id)} className="p-1 text-slate-300 hover:text-rose-500"><Icon name="trash" className="w-4 h-4" /></button></td>}</tr>
+            ))}</tbody></table>
+          </div>
+        ))}
+    </div>
+  );
+}
+
+// ==========================================
+// VUES PRINCIPALES
+// ==========================================
+
+function DashboardView({ stats, members, currency, isVisionOnly, onAddMember, onAddTransaction, themeGradient, activeMeetingDate, setActiveMeetingDate, isPremium }) {
+  const [op, setOp] = useState({ mId: '', amt: '', type: 'cotisation', dir: 'in', method: 'cash' });
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [nameInput, setNameInput] = useState('');
+  const [phoneInput, setPhoneInput] = useState('');
+  const [isConfirming, setIsConfirming] = useState(false);
+
+  // Vérification de la limite de membres
+  const isLimitReached = !isPremium && members.length >= FREE_MEMBER_LIMIT;
+
+  return (
+    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-6 duration-500 text-slate-800">
+      <div className="bg-white p-6 rounded-[2rem] border-2 border-indigo-100 shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
+        <div className="flex items-center gap-4 text-slate-800">
+          <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg"><Icon name="calendar" /></div>
+          <div><h2 className="text-sm font-black uppercase">Séance Active</h2><p className="text-[10px] text-slate-400 font-medium">Sélectionnez la séance pour filtrer les saisies.</p></div>
+        </div>
+        <div className="relative w-full md:w-auto">
+          <input type="date" value={activeMeetingDate || ""} onChange={(e) => setActiveMeetingDate(e.target.value)} className="w-full md:w-64 p-4 bg-slate-50 border-none rounded-2xl font-black text-sm outline-none text-indigo-600 shadow-inner" />
+          
+          {!activeMeetingDate && (
+            <div className="absolute left-1/2 -translate-x-1/2 md:left-auto md:right-4 top-full mt-4 flex flex-col items-center gap-2 animate-bounce pointer-events-none">
+              <Icon name="arrowUp" className="w-8 h-8 text-indigo-600" />
+              <h3 className="text-[10px] font-black uppercase text-indigo-600 whitespace-nowrap bg-indigo-50 px-4 py-2 rounded-full border border-indigo-100 shadow-sm">Choisissez une date pour commencer</h3>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {activeMeetingDate && (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-slate-800">
+              {!isVisionOnly && (
+                <div 
+                  onClick={() => { if (!isLimitReached) { setShowAddModal(true); setIsConfirming(false); } }} 
+                  className={`cursor-pointer p-6 rounded-[2rem] shadow-xl text-white relative overflow-hidden group border-4 border-white/20 active:scale-95 transition-all ${isLimitReached ? 'bg-slate-400 cursor-not-allowed opacity-70' : `bg-gradient-to-br ${themeGradient}`}`}
+                >
+                  <h3 className="text-base font-black">{isLimitReached ? "Limite Atteinte" : "Inscrire Membre"}</h3>
+                  <p className="text-[8px] font-bold opacity-80 uppercase">{isLimitReached ? "Passez en mode PRO" : `${members.length}/${isPremium ? '∞' : FREE_MEMBER_LIMIT} membres`}</p>
+                  <div className="absolute -bottom-2 -right-2 opacity-20 group-hover:scale-110 transition-transform">
+                    <Icon name={isLimitReached ? "lock" : "plus"} className="w-16 h-16" />
+                  </div>
+                </div>
+              )}
+              <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex flex-col justify-between"><p className="text-[10px] font-black uppercase text-slate-400">Cotisations séance</p><h3 className="text-lg font-black text-indigo-600 truncate">{formatCurrency(stats?.cotisations || 0, currency)}</h3></div>
+              <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex flex-col justify-between"><p className="text-[10px] font-black uppercase text-emerald-600">Fond de caisse (Net)</p><h3 className="text-lg font-black text-emerald-600 truncate">{formatCurrency(stats?.fonds || 0, currency)}</h3></div>
+              <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex flex-col justify-between"><p className="text-[10px] font-black uppercase text-sky-600">Épargne séance</p><h3 className="text-lg font-black text-sky-600 truncate">{formatCurrency(stats?.epargne || 0, currency)}</h3></div>
+          </div>
+
+          {!isVisionOnly && (
+            <div className="bg-white p-6 lg:p-10 rounded-[2rem] border border-slate-100 shadow-sm text-slate-800">
+              <h3 className="text-[11px] font-black uppercase mb-6 flex items-center gap-3"><div className="w-1 h-4 bg-indigo-600 rounded-full" /> Saisir mouvement ({String(activeMeetingDate)})</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-slate-800">
+                  <select value={op.mId} onChange={(e)=>setOp({...op, mId:e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-xs outline-none text-slate-800"><option value="">Choisir Membre...</option>{members.map((m)=><option key={m.id} value={String(m.id)}>{String(m.name)}</option>)}</select>
+                  <select value={op.type} onChange={(e)=>setOp({...op, type:e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-xs outline-none text-slate-800"><option value="cotisation">Cotisation</option><option value="epargne">Épargne</option><option value="fonds">Fond de caisse</option></select>
+                  <select value={op.method} onChange={(e)=>setOp({...op, method:e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-xs outline-none text-slate-800"><option value="cash">Espèces</option><option value="momo">Momo</option></select>
+                  <div className="md:col-span-2 lg:col-span-3 flex bg-slate-100 rounded-2xl p-1 text-slate-800">
+                    <button onClick={()=>setOp({...op,dir:'in'})} className={`flex-1 py-3 rounded-xl text-[9px] font-black uppercase ${op.dir==='in'?'bg-white shadow text-indigo-600':'text-slate-400'}`}>Entrée / Dépôt</button>
+                    <button onClick={()=>setOp({...op,dir:'out'})} className={`flex-1 py-3 rounded-xl text-[9px] font-black uppercase ${op.dir==='out'?'bg-white shadow text-rose-600':'text-slate-400'}`}>Sortie / Retrait</button>
+                  </div>
+                  <input type="number" value={op.amt} onChange={(e)=>setOp({...op,amt:e.target.value})} className="md:col-span-2 lg:col-span-3 p-4 bg-slate-50 rounded-2xl font-black text-2xl text-center outline-none border border-slate-100 shadow-inner text-slate-800" placeholder="0.00" />
+                  <ActionButton onClick={async () => { if(!op.mId||!op.amt) return; await onAddTransaction(op.mId,op.dir==='in'?Number(op.amt):-Number(op.amt),op.type, op.method); setOp({...op,amt:''}); }} label="Valider" className="md:col-span-2 lg:col-span-3 bg-slate-900 text-white p-5 rounded-3xl font-black text-xs uppercase shadow-xl" />
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {showAddModal && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-6 text-slate-800"><div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={() => setShowAddModal(false)}></div>
+            <div className="relative w-full max-w-sm bg-white rounded-[2.5rem] p-8 shadow-2xl text-slate-800">
+               <h2 className="text-xl font-black uppercase mb-6">{isConfirming ? "Confirmation" : "Nouveau Membre"}</h2>
+               {!isConfirming ? (
+                 <div className="space-y-4 text-slate-800">
+                    <input type="text" placeholder="Nom complet..." value={nameInput} onChange={e=>setNameInput(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold outline-none text-slate-800" />
+                    <input type="text" placeholder="Téléphone (ex: 00237...)" value={phoneInput} onChange={e=>setPhoneInput(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold outline-none text-slate-800" />
+                    <div className="flex gap-3 text-slate-800"><button onClick={() => setShowAddModal(false)} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black text-[10px] uppercase">Annuler</button>
+                    <button onClick={() => { if(nameInput.trim()) setIsConfirming(true); }} className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase">Enregistrer</button></div></div>
+               ) : (
+                 <div className="space-y-4 text-slate-800"><p className="text-xs text-slate-500">Ajouter <strong className="text-indigo-600">{String(nameInput)}</strong> ?</p>
+                    <div className="flex gap-3 text-slate-800"><button onClick={() => setIsConfirming(false)} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black text-[10px] uppercase">Retour</button>
+                    <ActionButton onClick={async () => { try { await onAddMember(nameInput.trim(), phoneInput.trim()); setNameInput(''); setPhoneInput(''); setIsConfirming(false); setShowAddModal(false); } catch (e) { console.error(e); } }} label="Confirmer" className="flex-1 bg-emerald-600 text-white rounded-2xl font-black text-[10px] uppercase shadow-lg" /></div></div>
+               )}
+            </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FinancesView({ transactions, allTransactions, members, currency, onDelete, onUpdate, isVisionOnly, activeMeetingDate }) {
+  const [showHistory, setShowHistory] = useState(false);
+  const displayTrans = showHistory ? allTransactions : transactions;
+  return (
+    <div className="space-y-8 animate-in fade-in duration-500 text-slate-800">
+      <div className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm text-slate-800">
+        <h2 className="text-xs font-black uppercase text-slate-500">{showHistory ? "Historique complet" : `Données du ${String(activeMeetingDate || '?')}`}</h2>
+        <button onClick={() => setShowHistory(!showHistory)} className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase transition-all ${showHistory ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'}`}>{showHistory ? "Vue séance" : "Voir tout"}</button>
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 text-slate-800">
+        <GenericHistory title="Cotisations" transactions={displayTrans.filter(t => t.type === 'cotisation')} members={members} currency={currency} onDelete={onDelete} onUpdate={onUpdate} isVisionOnly={isVisionOnly} />
+        <GenericHistory title="Épargne" transactions={displayTrans.filter(t => t.type === 'epargne')} members={members} currency={currency} onDelete={onDelete} onUpdate={onUpdate} isVisionOnly={isVisionOnly} />
+      </div>
+    </div>
+  );
+}
+
+function ReportsView({ members, transactions, rotations, loans, currency, themeGradient, defaultDate }) {
+  const [reportDate, setReportDate] = useState(defaultDate || new Date().toISOString().split('T')[0]);
+  const [showPreview, setShowPreview] = useState(false);
+
+  useEffect(() => { if (defaultDate) setReportDate(defaultDate); }, [defaultDate]);
+
+  const sessionData = useMemo(() => {
+    const d = String(reportDate || "");
+    const trans = (transactions || []).filter((t) => String(t.date) === d && t.status === 'completed');
+    const rot = (rotations || []).find((r) => String(r.date) === d);
+    const sLoans = (loans || []).filter((l) => String(l.startDate) === d);
+    const generationTime = new Date().toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' });
+    
+    return {
+      date: d,
+      generationTime,
+      beneficiary: members.find((m) => m.id === rot?.beneficiaryMemberId)?.name || 'Non défini',
+      host: members.find((m) => m.id === rot?.hostMemberId)?.name || 'Non défini',
+      membersList: (members || []).map((m) => {
+        const mTrans = trans.filter((t) => t.memberId === m.id);
+        const mLoan = sLoans.find((l) => l.memberId === m.id);
+        const cotis = mTrans.filter((t) => t.type === 'cotisation').reduce((s, t) => s + t.amount, 0);
+        const fondsTrans = mTrans.filter((t) => t.type === 'fonds');
+        const depotFond = fondsTrans.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0);
+        const sortieFond = Math.abs(fondsTrans.filter(t => t.amount < 0).reduce((s, t) => s + t.amount, 0));
+        let statusBadge = cotis > 0 ? "payé" : "non payé";
+        return { name: m.name, cotis, epargne: mTrans.filter((t) => t.type === 'epargne').reduce((s, t) => s + t.amount, 0), depotFond, sortieFond, pretTotal: mLoan?.totalAmount || 0, statusBadge };
+      }),
+      totals: {
+        cotis: trans.filter((t) => t.type === 'cotisation').reduce((s, t) => s + t.amount, 0),
+        epargne: trans.filter((t) => t.type === 'epargne').reduce((s, t) => s + t.amount, 0),
+        depotsFonds: trans.filter((t) => t.type === 'fonds' && t.amount > 0).reduce((s, t) => s + t.amount, 0),
+        sortiesFonds: Math.abs(trans.filter((t) => t.type === 'fonds' && t.amount < 0).reduce((s, t) => s + t.amount, 0)),
+        pretsTotal: sLoans.reduce((s, l) => s + (l.totalAmount || 0), 0)
+      }
+    };
+  }, [reportDate, transactions, rotations, loans, members]);
+
+  const shareWhatsApp = () => {
+    const text = `📊 *RAPPORT DE TONTINE - ${sessionData.date}*\n\n🏠 Hôte: ${sessionData.host}\n💰 Bénéficiaire: ${sessionData.beneficiary}\n\n💵 *Cotisations:* ${formatCurrency(sessionData.totals.cotis, currency)}\n🏦 *Total Épargne:* ${formatCurrency(sessionData.totals.epargne, currency)}\n\n_Veuillez imprimer le PDF puis le joindre sur WhatsApp pour le détail complet._\n_Généré via Tontine Pour Tous_`;
+    window.open(`https://wa.me/${WHATSAPP_SUPPORT}?text=${encodeURIComponent(text)}`, '_blank');
+  };
+
+  return (
+    <div className="space-y-6 text-slate-800">
+      <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm text-slate-800">
+          <h2 className="text-xl font-black uppercase mb-6">Générer un rapport</h2>
+          <div className="flex flex-col sm:flex-row gap-4">
+             <input type="date" value={reportDate || ""} onChange={e=>setReportDate(e.target.value)} className="flex-1 p-4 bg-slate-50 border border-slate-100 rounded-2xl font-black text-sm outline-none text-indigo-600 shadow-inner" />
+             <button onClick={() => setShowPreview(true)} className={`px-8 py-4 bg-gradient-to-br ${themeGradient} text-white rounded-2xl font-black text-[10px] uppercase shadow-lg shadow-indigo-100 transition-all active:scale-95`}>Voir le rapport</button>
+          </div>
+      </div>
+
+      {showPreview && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 print:p-0">
+           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md print:hidden" onClick={()=>setShowPreview(false)}></div>
+           <div className="relative w-full max-w-6xl bg-white rounded-[3rem] print:rounded-none shadow-2xl p-6 lg:p-10 max-h-[90vh] overflow-y-auto print:max-h-none print:overflow-visible text-slate-800">
+              
+              <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8 border-b border-slate-100 pb-8 print:hidden text-slate-800">
+                 <div className="text-center md:text-left text-slate-800">
+                    <h1 className="text-2xl font-black uppercase tracking-tighter text-slate-800">Rapport de Séance</h1>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{String(sessionData.date)}</p>
+                 </div>
+                 <div className="flex gap-3 text-slate-800">
+                    <button onClick={shareWhatsApp} className="flex items-center justify-center gap-2 px-6 py-3 bg-emerald-500 text-white rounded-2xl font-black text-[10px] uppercase shadow-lg active:scale-95 transition-all">WhatsApp</button>
+                    <button onClick={()=>window.print()} className="flex items-center justify-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase shadow-lg active:scale-95 transition-all">Imprimer PDF</button>
+                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mb-8 text-center text-slate-800">
+                 <div className="bg-emerald-50 p-6 rounded-3xl print:bg-emerald-50 print:border print:border-emerald-100"><p className="text-[10px] font-black uppercase text-emerald-400 mb-1">Bénéficiaire</p><p className="text-base lg:text-xl font-black text-emerald-600">{String(sessionData.beneficiary)}</p></div>
+                 <div className="bg-indigo-50 p-6 rounded-3xl print:bg-indigo-50 print:border print:border-indigo-100"><p className="text-[10px] font-black uppercase text-indigo-400 mb-1">Hôte</p><p className="text-base lg:text-xl font-black text-indigo-600">{String(sessionData.host)}</p></div>
+              </div>
+
+              <div className="overflow-x-auto mb-10 border border-slate-100 rounded-3xl text-slate-800">
+                 <table className="w-full text-left text-[11px] text-slate-800">
+                   <thead>
+                     <tr className="bg-slate-50 text-[9px] font-black uppercase text-slate-400 print:bg-slate-100">
+                       <th className="px-4 py-5">Membre</th>
+                       <th className="px-4 py-5">Statut</th>
+                       <th className="px-4 py-5 text-indigo-600">Cotisation</th>
+                       <th className="px-4 py-5 text-sky-600">Épargne</th>
+                       <th className="px-4 py-5 text-rose-500">Prêt (Dû)</th>
+                       <th className="px-4 py-5 text-emerald-600">Entrée Fond</th>
+                       <th className="px-4 py-5 text-rose-600">Sortie Fond</th>
+                     </tr>
+                   </thead>
+                   <tbody className="divide-y divide-slate-100 text-slate-800">
+                     {sessionData.membersList.map((m, i) => (
+                       <tr key={i} className="hover:bg-slate-50/50 transition-colors text-slate-800 print:bg-white">
+                         <td className="px-4 py-4 font-bold">{String(m.name)}</td>
+                         <td className="px-4 py-4">
+                            <span className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase print:border ${m.statusBadge === 'payé' ? 'bg-emerald-100 text-emerald-600 border-emerald-200' : 'bg-rose-100 text-rose-500 border-rose-200'}`}>{String(m.statusBadge)}</span>
+                         </td>
+                         <td className="px-4 py-4 font-black">{formatCurrency(m.cotis, currency)}</td>
+                         <td className="px-4 py-4 font-black text-sky-600">{formatCurrency(m.epargne, currency)}</td>
+                         <td className="px-4 py-4 font-black text-rose-500">{formatCurrency(m.pretTotal, currency)}</td>
+                         <td className="px-4 py-4 font-black text-emerald-600">{formatCurrency(m.depotFond, currency)}</td>
+                         <td className="px-4 py-4 font-black text-rose-600">{formatCurrency(m.sortieFond, currency)}</td>
+                       </tr>
+                     ))}
+                   </tbody>
+                   <tfoot className="bg-slate-900 text-white font-black print:bg-slate-900 print:text-white">
+                     <tr className="text-white">
+                       <td colSpan="2" className="px-4 py-5 uppercase tracking-widest text-[10px]">TOTAL SÉANCE</td>
+                       <td className="px-4 py-5">{formatCurrency(sessionData.totals.cotis, currency)}</td>
+                       <td className="px-4 py-5">{formatCurrency(sessionData.totals.epargne, currency)}</td>
+                       <td className="px-4 py-5 text-rose-400">{formatCurrency(sessionData.totals.pretsTotal, currency)}</td>
+                       <td className="px-4 py-5 text-emerald-400">{formatCurrency(sessionData.totals.depotsFonds, currency)}</td>
+                       <td className="px-4 py-5 text-rose-400">{formatCurrency(sessionData.totals.sortiesFonds, currency)}</td>
+                     </tr>
+                   </tfoot>
+                 </table>
+              </div>
+           </div>
+        </div>
+      )}
+      
+      <style>{`
+        @media print {
+          body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          .print\\:hidden { display: none !important; }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function RotationsView({ members, rotations, activeMeetingDate, onAddRotation, onDelete, isVisionOnly }) {
+  const [beneficiary, setBeneficiary] = useState("");
+  const [host, setHost] = useState("");
+  const [customDate, setCustomDate] = useState("");
+  const sortedRotations = useMemo(() => [...rotations].sort((a, b) => new Date(a.date) - new Date(b.date)), [rotations]);
+
+  return (
+    <div className="space-y-6 text-slate-800">
+      {!isVisionOnly && (
+        <div className="bg-white p-6 lg:p-8 rounded-[2rem] border border-slate-100 shadow-sm animate-in zoom-in-95 text-slate-800">
+           <h2 className="text-sm font-black uppercase text-slate-700 mb-6 tracking-widest flex items-center gap-2"><Icon name="calendar" className="w-4 h-4 text-indigo-600" /> Programmer séance</h2>
+           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 text-slate-800">
+              <input type="date" value={customDate} onChange={(e) => setCustomDate(e.target.value)} className="p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-xs outline-none text-indigo-600" />
+              <select value={beneficiary} onChange={(e) => setBeneficiary(e.target.value)} className="p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-xs outline-none text-slate-800"><option value="">Bénéficiaire...</option>{members.map(m => <option key={m.id} value={m.id}>{String(m.name)}</option>)}</select>
+              <select value={host} onChange={(e) => setHost(e.target.value)} className="p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-xs outline-none text-slate-800"><option value="">Hôte...</option>{members.map(m => <option key={m.id} value={m.id}>{String(m.name)}</option>)}</select>
+           </div>
+           <ActionButton onClick={async () => { if(!beneficiary || !host || !customDate) return; await onAddRotation(beneficiary, host, customDate); setBeneficiary(""); setHost(""); setCustomDate(""); }} label="Ajouter au calendrier" className="w-full bg-indigo-600 text-white p-5 rounded-3xl font-black text-[10px] uppercase shadow-xl" />
+        </div>
+      )}
+      <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden text-slate-800">
+        <div className="p-5 flex justify-between items-center border-b border-slate-50">
+          <h3 className="text-[10px] font-black uppercase text-slate-400">Calendrier des Rotations</h3>
+          <button onClick={() => window.print()} className="p-2 bg-slate-50 rounded-xl text-slate-400 hover:text-indigo-600 transition-colors"><Icon name="print" className="w-4 h-4" /></button>
+        </div>
+        <table className="w-full table-fixed text-left text-[11px] text-slate-800">
+          <thead className="bg-slate-50/50">
+            <tr className="text-[9px] font-black uppercase text-slate-400">
+              <th className="px-4 py-3 w-1/4">Date</th>
+              <th className="px-4 py-3 w-1/3">Bénéficiaire</th>
+              <th className="px-4 py-3 w-1/3">Hôte</th>
+              {!isVisionOnly && <th className="px-4 py-3 w-12 text-right"></th>}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-50 text-slate-800">
+            {sortedRotations.map(rot => (
+              <tr key={rot.id} className={`hover:bg-slate-50 text-slate-800 ${rot.date === activeMeetingDate ? 'bg-indigo-50/30' : ''}`}>
+                <td className="px-4 py-4 font-bold text-slate-600 truncate">{String(rot.date)}</td>
+                <td className="px-4 py-4 font-black text-emerald-600 uppercase truncate">
+                  {members.find(m => m.id === rot.beneficiaryMemberId)?.name || '...'}
+                </td>
+                <td className="px-4 py-4 font-black text-indigo-600 uppercase truncate">
+                  {members.find(m => m.id === rot.hostMemberId)?.name || '...'}
+                </td>
+                {!isVisionOnly && (
+                  <td className="px-4 py-4 text-right">
+                    <button onClick={() => onDelete('rotations', rot.id)} className="p-2 text-slate-300 hover:text-rose-500">
+                      <Icon name="trash" className="w-4 h-4" />
+                    </button>
+                  </td>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function MembersView({ members, activeMeetingDate, transactions, loans, rotations, currency, onDelete, isVisionOnly, onUpdate }) {
+  const [selectedMember, setSelectedMember] = useState(null);
+  
+  const editMember = (id, cn, cp) => { 
+    const n = prompt("Nouveau nom :", cn); 
+    const p = prompt("Nouveau téléphone :", cp || "");
+    if (n && n.trim()) onUpdate(id, n.trim(), p ? p.trim() : ""); 
+  };
+
+  const handleSendMessage = (m) => {
+    if (!m.phone) {
+        alert("Ce membre n'a pas de numéro de téléphone enregistré.");
+        return;
+    }
+    const cleanPhone = m.phone.replace(/[^0-9]/g, '');
+    const mId = m.id;
+    const mTrans = transactions.filter(t => t.memberId === mId && t.date === activeMeetingDate && t.status === 'completed');
+    const hasPaid = mTrans.some(t => t.type === 'cotisation' && t.amount > 0);
+    
+    let message = "";
+    if (activeMeetingDate && !hasPaid) {
+        message = `Bonjour ${m.name}, j'espère que tu vas bien. C'est un petit rappel poli concernant ta cotisation pour la séance du ${activeMeetingDate}. Merci d'avance !`;
+    } else if (activeMeetingDate) {
+        message = `Bonjour ${m.name}, c'est un rappel pour notre prochaine réunion de tontine prévue le ${activeMeetingDate}. On compte sur ta présence !`;
+    } else {
+        message = `Bonjour ${m.name}, j'espère que tu vas bien. C'est un petit message de la tontine pour te souhaiter une excellente journée.`;
+    }
+
+    window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, '_blank');
+  };
+
+  const memberReport = useMemo(() => {
+    if (!selectedMember || !activeMeetingDate) return null;
+    const mId = selectedMember.id;
+    const mTrans = transactions.filter(t => t.memberId === mId && t.date === activeMeetingDate && t.status === 'completed');
+    const mLoan = loans.find(l => l.memberId === mId && l.startDate === activeMeetingDate);
+    return {
+      name: selectedMember.name,
+      cotis: mTrans.filter(t => t.type === 'cotisation').reduce((s, t) => s + t.amount, 0),
+      epargne: mTrans.filter(t => t.type === 'epargne').reduce((s, t) => s + t.amount, 0),
+      fonds: mTrans.filter(t => t.type === 'fonds').reduce((s, t) => s + t.amount, 0),
+      loan: mLoan?.totalAmount || 0,
+    };
+  }, [selectedMember, activeMeetingDate, transactions, loans]);
+
+  return (
+    <div className="space-y-8 text-slate-800">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 lg:gap-6 animate-in fade-in text-slate-800">
+        {members.map((m) => (
+          <div key={m.id} onClick={() => setSelectedMember(m)} className="cursor-pointer bg-white p-4 rounded-[1.5rem] border border-slate-100 flex items-center justify-between shadow-sm hover:shadow-md transition-all active:scale-95 text-slate-800">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center font-black text-emerald-600 text-sm">{String(m.name).charAt(0)}</div>
+              <div>
+                <p className="font-bold text-xs">{String(m.name)}</p>
+                {m.phone && <p className="text-[8px] text-slate-400 font-medium">{m.phone}</p>}
+              </div>
+            </div>
+            {!isVisionOnly && (
+              <div className="flex items-center">
+                <button title="WhatsApp" onClick={(e)=>{ e.stopPropagation(); handleSendMessage(m); }} className="p-2 text-emerald-500 hover:bg-emerald-50 rounded-lg transition-colors">
+                  <Icon name="whatsapp" className="w-4 h-4" />
+                </button>
+                <button onClick={(e)=>{ e.stopPropagation(); editMember(m.id, m.name, m.phone); }} className="p-2 text-slate-200 hover:text-indigo-600">
+                  <Icon name="edit" className="w-4 h-4" />
+                </button>
+                <button onClick={(e)=>{ e.stopPropagation(); onDelete('members', m.id); }} className="p-2 text-slate-200 hover:text-rose-500">
+                  <Icon name="trash" className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+      {selectedMember && (
+        <div className="fixed inset-0 z-[400] flex items-center justify-center p-6 text-slate-800 text-slate-800"><div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md text-slate-800" onClick={() => setSelectedMember(null)}></div>
+           <div className="relative w-full max-w-sm bg-white rounded-[2.5rem] shadow-2xl p-8 animate-in zoom-in-95 text-slate-800">
+              <div className="flex justify-between items-center mb-6 text-slate-800">
+                <h2 className="text-lg font-black uppercase">Bilan Séance</h2>
+                <button onClick={() => setSelectedMember(null)} className="p-2 bg-slate-50 rounded-full text-slate-800"><Icon name="close" /></button>
+              </div>
+              {!activeMeetingDate ? <p className="text-center text-rose-500 text-[10px] font-bold">Sélectionnez une date de séance.</p> : (
+                <div className="space-y-3">
+                  <div className="flex justify-between p-3 bg-slate-50 rounded-xl font-bold"><span className="text-slate-400">Cotisation</span><span>{formatCurrency(memberReport.cotis, currency)}</span></div>
+                  <div className="flex justify-between p-3 bg-slate-50 rounded-xl font-bold"><span className="text-slate-400">Épargne</span><span>{formatCurrency(memberReport.epargne, currency)}</span></div>
+                  <div className="flex justify-between p-3 bg-slate-50 rounded-xl font-bold"><span className="text-slate-400">Fond de Caisse</span><span className={memberReport.fonds >= 0 ? 'text-emerald-600' : 'text-rose-600'}>{formatCurrency(memberReport.fonds, currency)}</span></div>
+                  <div className="flex justify-between p-3 bg-slate-50 rounded-xl font-bold"><span className="text-slate-400">Prêt Dû</span><span className="text-rose-600">{formatCurrency(memberReport.loan, currency)}</span></div>
+                </div>
+              )}
+           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LoansView({ members, loans, currency, onAdd, onDelete, isVisionOnly, themeGradient, activeMeetingDate }) {
+  const [data, setData] = useState({ mId: '', amt: '', rate: '10', dueDate: '' });
+  const total = (Number(data.amt) || 0) * (1 + (Number(data.rate) || 0) / 100);
+  if (!activeMeetingDate) return <div className="bg-rose-50 p-10 rounded-[3rem] border-2 border-dashed border-rose-200 text-center text-rose-700 font-black">DATE DE SÉANCE REQUISE</div>;
+  return (
+    <div className="space-y-4 lg:space-y-6 text-slate-800">
+      {!isVisionOnly && (
+        <div className="bg-white p-6 lg:p-8 rounded-[2.5rem] border border-slate-100 shadow-sm text-slate-800">
+          <h2 className="text-sm font-black uppercase mb-6 text-slate-700">Octroi de Prêt</h2>
+          <div className="space-y-5 text-slate-800">
+            <select value={data.mId} onChange={(e)=>setData({...data, mId:e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-xs outline-none text-slate-800"><option value="">Membre...</option>{members.map((m)=><option key={m.id} value={m.id}>{String(m.name)}</option>)}</select>
+            <div className="grid grid-cols-2 gap-4 text-slate-800">
+              <input type="number" placeholder="Capital" value={data.amt} onChange={(e)=>setData({...data, amt:e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-black text-sm outline-none text-slate-800" />
+              <input type="number" placeholder="Taux %" value={data.rate} onChange={(e)=>setData({...data, rate:e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-black text-sm outline-none text-slate-800" />
+            </div>
+            <input type="date" value={data.dueDate} onChange={(e)=>setData({...data, dueDate:e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-black text-sm outline-none text-indigo-600" />
+            <ActionButton onClick={async () => { if(!data.mId || !data.amt || !data.dueDate) return; await onAdd({memberId: data.mId, principal: Number(data.amt), interestRate: Number(data.rate), totalAmount: total, dueDate: data.dueDate, status: 'actif'}); setData({mId:'', amt:'', rate:'10', dueDate:''}); }} label="Enregistrer le prêt" className={`w-full py-5 bg-gradient-to-br ${themeGradient} text-white rounded-3xl font-black text-[11px] uppercase shadow-lg`} />
+          </div>
+        </div>
+      )}
+      <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden text-slate-800">
+        <table className="w-full text-left text-[11px] text-slate-800"><tbody className="divide-y divide-slate-50 text-slate-800">{loans.map((l)=>(<tr key={l.id} className="hover:bg-slate-50 text-slate-800"><td className="px-6 py-4 font-bold">{members.find((m)=>m.id===l.memberId)?.name || 'Inconnu'}</td><td className="px-6 py-4 text-indigo-500 font-black text-[9px] uppercase">Taux: {String(l.interestRate)}%</td><td className="px-6 py-4"><span className="px-2 py-1 bg-rose-50 text-rose-600 rounded-lg font-black text-[9px] uppercase">{String(l.dueDate)}</span></td><td className="px-6 py-4 text-right font-black text-rose-500 text-sm">{formatCurrency(l.totalAmount, currency)}</td>{!isVisionOnly && <td className="px-6 py-4 text-right"><button onClick={()=>onDelete('loans', l.id)} className="p-2 text-slate-300 hover:text-rose-500"><Icon name="trash" className="w-4 h-4" /></button></td>}</tr>))}</tbody></table>
+      </div>
+    </div>
+  );
+}
+
+function SettingsView({ currency, setCurrency, profile, onUpgrade, isAdmin, allUsers, onApprove, onAdminDelete, isVisionOnly }) {
+  const [exp, setExp] = useState('');
+  return (
+    <div className="space-y-4 lg:space-y-10 pb-20 text-slate-800">
+      <div className="bg-white p-5 lg:p-10 rounded-[2rem] border border-slate-100 shadow-sm text-slate-800">
+          <h2 className="text-xl font-black uppercase mb-8 flex items-center gap-3 text-slate-800">Préférences</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-10 text-slate-800">
+             <div className="p-5 bg-slate-50 rounded-[1.5rem] border border-slate-100 text-slate-800">
+                <p className="font-black text-[10px] uppercase mb-4 tracking-widest text-slate-400">Devise de l'application</p>
+                <select value={currency || "FCFA"} onChange={e => setCurrency(e.target.value)} className="w-full p-4 bg-white border border-slate-100 rounded-2xl font-black text-[11px] outline-none text-slate-800"><option value="FCFA">FCFA</option><option value="USD">USD</option><option value="EUR">EUR</option></select>
+             </div>
+             <div className="p-8 border-2 border-indigo-50 rounded-[2.5rem] text-center bg-white text-slate-800">
+                <div className="w-12 h-12 mx-auto mb-4 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center"><Icon name="settings" /></div>
+                <h3 className="text-lg font-black uppercase mb-6 text-slate-800">Service Premium</h3>
+                <div className="bg-indigo-50 p-6 rounded-2xl text-left space-y-2 mb-6 text-indigo-700">
+                    <p className="text-[10px] font-black">Mobile Money: {String(MOMO_NUMBER)}</p>
+                    <p className="text-[10px] font-black">PayPal: j_nguetsop@yahoo.com</p>
+                    <p className="text-[9px] font-medium opacity-80 mt-2 italic">* Pour activer votre compte, envoyez le montant de 1€ via l'un des canaux ci-dessus.</p>
+                </div>
+                {!isVisionOnly && profile?.status === 'none' && <ActionButton onClick={onUpgrade} label="Demander Activation PRO (1€)" className="w-full bg-indigo-600 text-white p-4 rounded-2xl font-black text-xs uppercase shadow-xl" />}
+                {profile?.status === 'pending' && <div className="p-4 bg-amber-50 text-amber-600 font-black text-[10px] uppercase rounded-2xl border border-amber-100 animate-pulse">Demande d'activation envoyée...</div>}
+                {profile?.status === 'pro' && <div className="p-4 bg-emerald-50 text-emerald-600 font-black text-[10px] uppercase rounded-2xl border border-emerald-100 shadow-sm">Premium Actif</div>}
+             </div>
+          </div>
+      </div>
+
+      <div className="bg-white p-6 lg:p-10 rounded-[2rem] border border-slate-100 shadow-sm text-slate-800">
+        <h2 className="text-xl font-black uppercase mb-4 flex items-center gap-3 text-slate-800">Support & Assistance</h2>
+        <div className="flex flex-col md:flex-row items-center gap-6 p-6 bg-emerald-50 rounded-[2rem] border border-emerald-100">
+          <div className="w-12 h-12 bg-emerald-500 rounded-full flex items-center justify-center text-white shadow-lg text-slate-800">
+            <Icon name="phone" className="w-6 h-6" />
+          </div>
+          <div className="text-center md:text-left text-slate-800">
+            <p className="text-xs font-black uppercase text-emerald-600 tracking-widest">Contact WhatsApp</p>
+            <p className="text-xl font-black text-emerald-800">{WHATSAPP_SUPPORT}</p>
+          </div>
+          <a href={`https://wa.me/${WHATSAPP_SUPPORT.replace(/^00/, '')}`} target="_blank" rel="noreferrer" className="md:ml-auto px-8 py-3 bg-emerald-500 text-white rounded-2xl font-black text-[10px] uppercase shadow-lg shadow-emerald-100 active:scale-95 transition-all">
+            Discuter maintenant
+          </a>
+        </div>
+      </div>
+
+      {isAdmin && (
+        <div className="bg-white p-6 lg:p-10 rounded-[2rem] border-4 border-indigo-100 shadow-xl text-slate-800">
+          <h2 className="text-xs font-black uppercase text-indigo-600 mb-6 text-slate-800">Admin Panel</h2>
+          <div className="overflow-x-auto text-slate-800">
+            <table className="w-full text-left text-slate-800">
+              <thead>
+                <tr className="text-[9px] uppercase text-slate-400">
+                  <th>Email</th><th>Échéance</th><th className="text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-slate-800">
+                {(allUsers || []).map(u => (
+                  <tr key={u.uid} className="text-slate-800">
+                    <td className="py-4 text-xs font-bold text-slate-800">
+                      <div className="flex items-center gap-2">
+                        {u.status === 'pending' && <div className="relative flex h-2 w-2 text-slate-800"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span></div>}
+                        {String(u.email)}
+                      </div>
+                    </td>
+                    <td className="py-4 text-[10px] font-black text-indigo-600 text-slate-800">{String(u.expiryDate || 'N/A')}</td>
+                    <td className="py-4 text-right space-x-2 text-slate-800">
+                      <input type="date" className="p-1 border rounded text-[10px] text-slate-800" onChange={e=>setExp(e.target.value)} />
+                      <button onClick={() => onApprove(u.uid, exp || new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0])} className="bg-emerald-600 text-white px-2 py-1 rounded text-[8px] font-black uppercase shadow-sm">Activer</button>
+                      <button onClick={() => onAdminDelete(u.uid)} className="bg-rose-500 text-white px-2 py-1 rounded shadow-sm"><Icon name="trash" className="w-3 h-3 text-white" /></button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ==========================================
 // COMPOSANT PRINCIPAL
@@ -161,130 +665,86 @@ export default function App() {
   const [globalFilter, setGlobalFilter] = useState({ memberId: '', date: '' });
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeMeetingDate, setActiveMeetingDate] = useState("");
-  const [authStatusMessage, setAuthStatusMessage] = useState({ text: "", type: "" });
-  
-  const [confirmState, setConfirmState] = useState({ 
-    isOpen: false, 
-    title: '', 
-    onConfirm: async () => {} 
-  });
-
+  const [confirmState, setConfirmState] = useState({ isOpen: false, title: '', onConfirm: async () => {} });
   const [authMode, setAuthMode] = useState('login');
   const [authForm, setAuthForm] = useState({ email: '', password: '' });
   const [authError, setAuthError] = useState('');
 
-  // Détermination des permissions basées uniquement sur le profil utilisateur
   const isVisionOnly = profile?.role === 'member';
   const dataOwnerId = profile?.role === 'member' ? (profile.presidentId || '') : (profile?.uid || '');
-  
   const isPremium = profile?.status === 'pro';
   const themeGradient = isPremium ? 'from-amber-500 to-amber-600' : 'from-indigo-600 to-indigo-800';
 
-  // ACTIONS
-  const handleLogout = async () => { await signOut(auth); setCurrentPage('dashboard'); setIsMobileMenuOpen(false); };
+  const NAV_LINKS = [
+    { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
+    { id: 'members', label: 'Membres', icon: 'members' },
+    { id: 'finances', label: 'Finances', icon: 'cotisations' },
+    { id: 'reports', label: 'Rapports', icon: 'fileText' },
+    { id: 'prets', label: 'Prêts', icon: 'prets' },
+    { id: 'rotations', label: 'Rotations', icon: 'share' },
+    { id: 'fonds', label: 'Fond de caisse', icon: 'fonds' },
+    { id: 'settings', label: 'Paramètres', icon: 'settings' }, 
+  ];
+
+  const filteredTransactions = useMemo(() => {
+    if (!activeMeetingDate) return [];
+    return transactions.filter(t => t.date === activeMeetingDate);
+  }, [transactions, activeMeetingDate]);
+
+  const stats = useMemo(() => {
+    const s = filteredTransactions.filter(t => t.status === 'completed');
+    return {
+      cotisations: s.filter(t => t.type === 'cotisation').reduce((sum, t) => sum + t.amount, 0),
+      epargne: s.filter(t => t.type === 'epargne').reduce((sum, t) => sum + t.amount, 0),
+      fonds: s.filter(t => t.type === 'fonds').reduce((sum, t) => sum + t.amount, 0),
+    };
+  }, [filteredTransactions]);
+
+  const handleLogout = async () => { await signOut(auth); setUser(null); setProfile(null); setCurrentPage('dashboard'); setIsMobileMenuOpen(false); };
   
-  const handleAddMember = async (name) => { 
-    if (isVisionOnly || !user?.uid) return; 
-    try {
-      await addDoc(collection(db, 'artifacts', NJANGI_APP_ID, 'public', 'data', 'members'), { 
+  const handleAddMember = async (name, phone) => { 
+    if (isVisionOnly || !user?.uid) return;
+    // Blocage si limite atteinte en gratuit
+    if (!isPremium && members.length >= FREE_MEMBER_LIMIT) {
+        alert("Limite de membres atteinte. Veuillez passer au mode PRO pour ajouter plus de 10 membres.");
+        return;
+    }
+    await addDoc(collection(db, 'artifacts', NJANGI_APP_ID, 'public', 'data', 'members'), { 
         name, 
+        phone: phone || "", 
         joinDate: new Date().toISOString().split('T')[0], 
         presidentId: user.uid 
-      }); 
-    } catch (e) {
-      console.error("Erreur lors de l'ajout du membre:", e);
-      throw e;
-    }
+    }); 
   };
-  
-  const handleUpdateMember = async (id, newName) => { if (isVisionOnly) return; await updateDoc(doc(db, 'artifacts', NJANGI_APP_ID, 'public', 'data', 'members', id), { name: newName }); };
-  
-  const handleDelete = (coll, id) => { 
+
+  const handleUpdateMember = async (id, newName, newPhone) => { 
     if (isVisionOnly) return; 
-    setConfirmState({
-      isOpen: true,
-      title: "Supprimer définitivement cet élément ?",
-      onConfirm: async () => {
-         try { 
-           await deleteDoc(doc(db, 'artifacts', NJANGI_APP_ID, 'public', 'data', coll, id)); 
-           setConfirmState(prev => ({ ...prev, isOpen: false, title: '', onConfirm: async () => {} }));
-         } catch (e) { console.error(e); }
-      }
-    });
-  };
-
-  const handleAddTransaction = async (mId, amt, type, method = 'cash') => { 
-    if (isVisionOnly || !dataOwnerId || !activeMeetingDate) return; 
-    await addDoc(collection(db, 'artifacts', NJANGI_APP_ID, 'public', 'data', 'transactions'), { 
-      memberId: mId, 
-      amount: amt, 
-      type, 
-      method, 
-      status: method === 'cash' ? 'completed' : 'pending', 
-      date: activeMeetingDate,
-      presidentId: dataOwnerId 
+    await updateDoc(doc(db, 'artifacts', NJANGI_APP_ID, 'public', 'data', 'members', id), { 
+        name: newName,
+        phone: newPhone || ""
     }); 
   };
 
+  const handleDelete = (coll, id) => { if (isVisionOnly) return; setConfirmState({ isOpen: true, title: "Supprimer cet élément ?", onConfirm: async () => { try { await deleteDoc(doc(db, 'artifacts', NJANGI_APP_ID, 'public', 'data', coll, id)); setConfirmState(p => ({ ...p, isOpen: false })); } catch (e) { console.error(e); } } }); };
+  const handleAddTransaction = async (mId, amt, type, method = 'cash') => { if (isVisionOnly || !dataOwnerId || !activeMeetingDate) return; await addDoc(collection(db, 'artifacts', NJANGI_APP_ID, 'public', 'data', 'transactions'), { memberId: mId, amount: amt, type, method, status: 'completed', date: activeMeetingDate, presidentId: dataOwnerId }); };
   const handleUpdateTransaction = async (id, newAmt) => { if (isVisionOnly) return; await updateDoc(doc(db, 'artifacts', NJANGI_APP_ID, 'public', 'data', 'transactions', id), { amount: newAmt }); };
-  
-  const handleAddLoan = async (loanData) => { 
-    if (isVisionOnly || !dataOwnerId || !activeMeetingDate) return; 
-    await addDoc(collection(db, 'artifacts', NJANGI_APP_ID, 'public', 'data', 'loans'), { 
-      ...loanData, 
-      startDate: activeMeetingDate,
-      presidentId: dataOwnerId 
-    }); 
-    await handleAddTransaction(loanData.memberId, -loanData.principal, 'fonds', 'cash'); 
-  };
-
-  const handleAddRotation = async (beneficiaryId, hostId, date) => {
-    if (isVisionOnly || !dataOwnerId || !date) return;
-    await addDoc(collection(db, 'artifacts', NJANGI_APP_ID, 'public', 'data', 'rotations'), {
-      date: date,
-      beneficiaryMemberId: beneficiaryId,
-      hostMemberId: hostId,
-      presidentId: dataOwnerId
-    });
-  };
-  
+  const handleAddLoan = async (loanData) => { if (isVisionOnly || !dataOwnerId || !activeMeetingDate) return; await addDoc(collection(db, 'artifacts', NJANGI_APP_ID, 'public', 'data', 'loans'), { ...loanData, startDate: activeMeetingDate, presidentId: dataOwnerId }); };
+  const handleAddRotation = async (beneficiaryId, hostId, date) => { if (isVisionOnly || !dataOwnerId || !date) return; await addDoc(collection(db, 'artifacts', NJANGI_APP_ID, 'public', 'data', 'rotations'), { date: date, beneficiaryMemberId: beneficiaryId, hostMemberId: hostId, presidentId: dataOwnerId }); };
   const handleRequestPro = async () => { if (user) await updateDoc(doc(db, 'artifacts', NJANGI_APP_ID, 'public', 'data', 'users', user.uid), { status: 'pending', requestDate: new Date().toISOString() }); };
   const handleApprovePro = async (uid, expiry) => { if (user?.email === ADMIN_EMAIL) await updateDoc(doc(db, 'artifacts', NJANGI_APP_ID, 'public', 'data', 'users', uid), { status: 'pro', expiryDate: expiry }); };
-  const handleCancelPro = async (uid) => { if (user?.email === ADMIN_EMAIL) await updateDoc(doc(db, 'artifacts', NJANGI_APP_ID, 'public', 'data', 'users', uid), { status: 'none', expiryDate: null }); };
-  
-  const handleAdminDeleteUser = (uid) => { 
-    if (user?.email !== ADMIN_EMAIL) return; 
-    setConfirmState({ isOpen: true, title: "Supprimer ce client ?", onConfirm: async () => { try { await deleteDoc(doc(db, 'artifacts', NJANGI_APP_ID, 'public', 'data', 'users', uid)); setConfirmState(prev => ({ ...prev, isOpen: false })); } catch (e) { console.error(e); } } });
-  };
-  
-  const handleResetPassword = async () => {
-    if (!authForm.email) {
-      setAuthStatusMessage({ text: "Entrez votre email d'abord", type: "error" });
-      return;
-    }
-    try { 
-      await sendPasswordResetEmail(auth, authForm.email); 
-      setAuthStatusMessage({ text: "Email de récupération envoyé !", type: "success" });
-    } catch (e) { 
-      setAuthStatusMessage({ text: "Erreur lors de l'envoi", type: "error" });
-    }
-  };
+  const handleAdminDeleteUser = (uid) => { if (user?.email !== ADMIN_EMAIL) return; setConfirmState({ isOpen: true, title: "Supprimer ce client ?", onConfirm: async () => { try { await deleteDoc(doc(db, 'artifacts', NJANGI_APP_ID, 'public', 'data', 'users', uid)); setConfirmState(p => ({ ...p, isOpen: false })); } catch (e) { console.error(e); } } }); };
 
-  // AUTH HOOK
   useEffect(() => {
     const initAuth = async () => {
       try {
         if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          await signInWithCustomToken(auth, __initial_auth_token);
-        } else {
-          await signInAnonymously(auth);
+          await signInWithCustomToken(auth, __initial_auth_token).catch(() => {});
+        } else { 
+          await signInAnonymously(auth).catch(() => {});
         }
-      } catch (e) {
-        console.error("Auth init error:", e);
-      }
+      } catch (e) { console.error(e); }
     };
     initAuth();
-
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
       if (firebaseUser) {
@@ -293,7 +753,7 @@ export default function App() {
           if (snap.exists()) setProfile(snap.data());
           else {
             const newProfile = { uid: firebaseUser.uid, email: firebaseUser.email || 'Anonyme', status: 'none', role: 'president' };
-            setDoc(userDocRef, newProfile);
+            setDoc(userDocRef, newProfile).catch(() => {});
             setProfile(newProfile);
           }
         });
@@ -303,7 +763,6 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // FIRESTORE SYNC
   useEffect(() => {
     if (!user || !dataOwnerId) return;
     const paths = {
@@ -314,690 +773,128 @@ export default function App() {
       users: collection(db, 'artifacts', NJANGI_APP_ID, 'public', 'data', 'users')
     };
     
-    const unsubMembers = onSnapshot(paths.members, (snap) => setMembers(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(m => m.presidentId === dataOwnerId)), (e) => console.error(e));
-    const unsubTransactions = onSnapshot(paths.transactions, (snap) => setTransactions(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(t => t.presidentId === dataOwnerId)), (e) => console.error(e));
-    const unsubLoans = onSnapshot(paths.loans, (snap) => setLoans(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(l => l.presidentId === dataOwnerId)), (e) => console.error(e));
-    const unsubRotations = onSnapshot(paths.rotations, (snap) => setRotations(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(r => r.presidentId === dataOwnerId)), (e) => console.error(e));
-    const unsubUsers = onSnapshot(paths.users, (snap) => setAllUsers(snap.docs.map(d => d.data())), (e) => console.error(e));
-
+    const unsubMembers = onSnapshot(paths.members, (snap) => setMembers(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(m => m.presidentId === dataOwnerId)), (err) => console.error(err));
+    const unsubTransactions = onSnapshot(paths.transactions, (snap) => setTransactions(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(t => t.presidentId === dataOwnerId)), (err) => console.error(err));
+    const unsubLoans = onSnapshot(paths.loans, (snap) => setLoans(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(l => l.presidentId === dataOwnerId)), (err) => console.error(err));
+    const unsubRotations = onSnapshot(paths.rotations, (snap) => setRotations(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(r => r.presidentId === dataOwnerId)), (err) => console.error(err));
+    const unsubUsers = onSnapshot(paths.users, (snap) => setAllUsers(snap.docs.map(d => d.data())), (err) => console.error(err));
+    
     return () => { unsubMembers(); unsubTransactions(); unsubLoans(); unsubRotations(); unsubUsers(); };
   }, [user, dataOwnerId]);
 
-  // STATS
-  const filteredTransactions = useMemo(() => {
-    if (!activeMeetingDate) return [];
-    return transactions.filter(t => t.date === activeMeetingDate);
-  }, [transactions, activeMeetingDate]);
-
-  const completedTrans = useMemo(() => filteredTransactions.filter(t => t.status === 'completed'), [filteredTransactions]);
-  
-  const stats = useMemo(() => ({
-    cotisations: completedTrans.filter(t => t.type === 'cotisation').reduce((sum, t) => sum + t.amount, 0),
-    epargne: completedTrans.filter(t => t.type === 'epargne').reduce((sum, t) => sum + t.amount, 0),
-    fonds: completedTrans.filter(t => t.type === 'fonds').reduce((sum, t) => sum + t.amount, 0),
-    totalCash: completedTrans.reduce((sum, t) => sum + t.amount, 0),
-    prets: loans.filter(l => l.startDate === activeMeetingDate).reduce((sum, t) => sum + (t.totalAmount || 0), 0),
-  }), [completedTrans, loans, activeMeetingDate]);
-
   const selectedBalanceValue = useMemo(() => {
     if (!globalFilter.memberId) return null;
-    const relevantTrans = transactions.filter(t => t.status === 'completed' && t.memberId === globalFilter.memberId && t.type === 'fonds');
-    return relevantTrans.reduce((sum, t) => sum + t.amount, 0);
+    return transactions.filter(t => t.status === 'completed' && t.memberId === globalFilter.memberId && t.type === 'fonds').reduce((sum, t) => sum + t.amount, 0);
   }, [transactions, globalFilter.memberId]);
 
-  if (isLoading) return <div className="h-screen flex items-center justify-center bg-slate-50 font-black text-indigo-600 animate-pulse uppercase tracking-[0.4em]">Initialisation...</div>;
+  if (isLoading) return <div className="h-screen flex items-center justify-center bg-slate-50 font-black text-indigo-600 animate-pulse uppercase tracking-widest">Chargement NJANGI...</div>;
 
   if (!user) return (
     <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-6 text-slate-800 text-center">
-      <div className="w-full max-w-md bg-white rounded-[3rem] shadow-2xl p-10 border border-slate-100 animate-in fade-in">
-          <div className="mb-10">
-            <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 text-white shadow-lg"><Icon name="dashboard" /></div>
-            <h1 className="text-2xl font-black uppercase tracking-tighter text-slate-800">Tontine pour tous</h1>
+      <div className="w-full max-w-md bg-white rounded-[3rem] shadow-2xl p-10 border border-slate-100">
+          <div className="mb-10 text-slate-800"><div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center text-white mx-auto mb-4 shadow-lg"><Icon name="dashboard" className="w-10 h-10" /></div><h1 className="text-2xl font-black uppercase tracking-tighter text-slate-800">Tontine pour tous</h1></div>
+          <div className="space-y-4 text-slate-800">
+            {authError && <div className="bg-rose-50 text-rose-500 p-4 rounded-xl text-[10px] font-black uppercase">{authError}</div>}
+            <input type="email" placeholder="Email" className="w-full p-4 bg-slate-50 border-none rounded-2xl font-bold outline-none text-slate-800" value={authForm.email} onChange={e => setAuthForm({...authForm, email: e.target.value})} />
+            <input type="password" placeholder="Mot de passe" className="w-full p-4 bg-slate-50 border-none rounded-2xl font-bold outline-none text-slate-800" value={authForm.password} onChange={e => setAuthForm({...authForm, password: e.target.value})} />
+            <ActionButton onClick={async () => { setAuthError(''); try { if (authMode === 'login') await signInWithEmailAndPassword(auth, authForm.email, authForm.password); else await createUserWithEmailAndPassword(auth, authForm.email, authForm.password); } catch (e) { setAuthError('Identifiants incorrects'); } }} label={authMode === 'login' ? 'Connexion' : 'Inscription'} className="w-full bg-indigo-600 text-white p-5 rounded-2xl font-black uppercase shadow-xl" />
           </div>
-          <div className="space-y-4">
-             <input type="email" placeholder="Email" className="w-full p-4 bg-slate-50 border-none rounded-2xl font-bold outline-none text-slate-900 shadow-inner" value={authForm.email} onChange={e => setAuthForm({...authForm, email: e.target.value})} />
-             <input type="password" placeholder="Mot de passe" className="w-full p-4 bg-slate-50 border-none rounded-2xl font-bold outline-none text-slate-900 shadow-inner" value={authForm.password} onChange={e => setAuthForm({...authForm, password: e.target.value})} />
-             
-             {authStatusMessage.text && (
-               <p className={`text-[10px] font-black p-3 rounded-xl ${authStatusMessage.type === 'error' ? 'text-rose-500 bg-rose-50' : 'text-emerald-600 bg-emerald-50'}`}>
-                 {authStatusMessage.text}
-               </p>
-             )}
-             
-             {authError && <p className="text-[10px] font-black text-rose-500 bg-rose-50 p-2 rounded-lg">{String(authError)}</p>}
-             <ActionButton onClick={async () => { setAuthError(''); setAuthStatusMessage({text:"", type:""}); try { if (authMode === 'login') await signInWithEmailAndPassword(auth, authForm.email, authForm.password); else await createUserWithEmailAndPassword(auth, authForm.email, authForm.password); } catch (e) { setAuthError(e.code === 'auth/invalid-credential' ? 'Identifiants incorrects' : 'Erreur auth'); } }} label={authMode === 'login' ? 'Connexion' : 'Inscription'} className="w-full bg-indigo-600 text-white p-5 rounded-2xl font-black uppercase shadow-xl" />
-          </div>
-          <div className="mt-6 flex flex-col gap-3">
-             <button onClick={() => setAuthMode(authMode === 'login' ? 'signup' : 'login')} className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{authMode === 'login' ? "Nouveau ? Créer un compte" : "Déjà membre ? Connexion"}</button>
-             <button onClick={handleResetPassword} className="text-[9px] font-bold text-indigo-500 uppercase tracking-widest hover:text-indigo-700 transition-colors cursor-pointer">Mot de passe oublié ?</button>
-          </div>
+          <div className="mt-6 text-slate-800"><button onClick={() => setAuthMode(authMode === 'login' ? 'signup' : 'login')} className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{authMode === 'login' ? "Nouveau ? Créer un compte" : "Déjà membre ? Connexion"}</button></div>
       </div>
     </div>
   );
 
   return (
-    <div className="flex h-screen bg-[#F8FAFC] text-slate-900 font-sans antialiased overflow-hidden flex-col lg:flex-row">
+    <div className="flex h-screen bg-[#F8FAFC] text-slate-900 font-sans overflow-hidden flex-col lg:flex-row">
       <ConfirmModal isOpen={confirmState.isOpen} title={confirmState.title} onConfirm={confirmState.onConfirm} onCancel={() => setConfirmState({...confirmState, isOpen: false})} />
 
       <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-slate-100 shrink-0">
-        <div className="p-8 flex items-center gap-2 mb-8"><div className={`p-2 rounded-xl shadow-lg text-white ${isPremium ? 'bg-amber-500' : 'bg-indigo-600'}`}><Icon name="dashboard" /></div><span className="text-xl font-black text-slate-800 uppercase leading-none">Tontine<br/><span className={`${isPremium ? 'text-amber-500' : 'text-indigo-600'} text-[10px]`}>pour tous</span></span></div>
-        <nav className="flex-1 px-4 space-y-1 overflow-y-auto">{NAV_ITEMS.map((item) => (<button key={item.id} onClick={() => setCurrentPage(item.id)} className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${currentPage === item.id ? 'bg-slate-50 text-indigo-700 border border-slate-100 shadow-sm' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}><div className={`p-1.5 rounded-lg transition-colors ${currentPage === item.id ? (isPremium ? 'bg-amber-500' : 'bg-indigo-600') : 'bg-slate-50'}`}><Icon name={item.icon} className={`w-3.5 h-3.5 ${currentPage === item.id ? 'text-white' : 'text-slate-400'}`} /></div><span className="truncate">{item.label}</span></button>))}</nav>
-        <div className="p-6 border-t border-slate-50">
-          <button onClick={() => setCurrentPage('settings')} className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl text-[10px] font-black uppercase ${currentPage === 'settings' ? 'bg-slate-50 text-indigo-600' : 'text-slate-400'}`}><Icon name="settings" /> <span>Paramètres</span></button>
-          <button onClick={handleLogout} className="w-full flex items-center gap-4 px-4 py-3 rounded-xl text-[10px] font-black uppercase text-rose-500 hover:bg-rose-50 transition-all"><Icon name="logout" /> <span>Quitter</span></button>
+        <div className="p-8 mb-8 flex items-center gap-2">
+          <div className={`p-2 rounded-xl text-white ${isPremium ? 'bg-amber-500' : 'bg-indigo-600'}`}><Icon name="dashboard" /></div>
+          <span className="text-xl font-black uppercase tracking-tighter">Tontine</span>
+        </div>
+        <nav className="flex-1 px-4 space-y-1">
+          {NAV_LINKS.map(item => (
+            <button key={item.id} onClick={() => setCurrentPage(item.id)} className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${currentPage === item.id ? 'bg-slate-50 text-indigo-700 border border-slate-100' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-600'}`}>
+              <Icon name={item.icon} className="w-3.5 h-3.5" />
+              {String(item.label)}
+            </button>
+          ))}
+        </nav>
+        <div className="p-6">
+          <button onClick={handleLogout} className="w-full flex items-center gap-4 p-3 text-[10px] font-black text-rose-500 uppercase tracking-widest hover:bg-rose-50 rounded-xl">Quitter</button>
         </div>
       </aside>
       
-      <main className="flex-1 flex flex-col relative overflow-hidden h-full">
-        <header className="h-14 bg-white/80 backdrop-blur-lg border-b border-slate-100 flex items-center justify-between px-4 lg:px-8 shrink-0 z-20">
-            <div className="flex items-center gap-3">
-              <button onClick={() => setIsMobileMenuOpen(true)} className="lg:hidden p-2 bg-slate-50 text-slate-600 rounded-xl border border-slate-200 shadow-sm"><Icon name="menu" /></button>
-              <div className="flex flex-col">
-                <h1 className={`lg:hidden text-[11px] font-black ${isPremium ? 'text-amber-500' : 'text-indigo-600'} uppercase tracking-tighter leading-none mb-0.5`}>Tontine pour tous</h1>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <div className={`w-1.5 h-1.5 rounded-full ${isVisionOnly ? 'bg-amber-400' : isPremium ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`}></div>
-                  <span className="text-[8px] font-black uppercase text-slate-500">{String(currentPage)}</span>
-                </div>
-              </div>
-            </div>
-            {activeMeetingDate && (
-              <div className="hidden sm:flex items-center gap-2 bg-indigo-50 px-3 py-1.5 rounded-full border border-indigo-100">
-                <Icon name="calendar" className="w-3.5 h-3.5 text-indigo-600" />
-                <span className="text-[9px] font-black text-indigo-600 uppercase">Réunion : {activeMeetingDate}</span>
-              </div>
+      <main className="flex-1 flex flex-col relative overflow-hidden bg-slate-50/50">
+        <header className="h-14 bg-white border-b flex items-center justify-between px-4 lg:px-8 shrink-0">
+            <button onClick={() => setIsMobileMenuOpen(true)} className="lg:hidden p-2 text-slate-800"><Icon name="menu" /></button>
+            {activeMeetingDate ? (
+              <div className="text-[9px] font-black text-indigo-600 uppercase bg-indigo-50 px-3 py-1.5 rounded-full border border-indigo-100">Réunion : {String(activeMeetingDate)}</div>
+            ) : (
+              <div className="text-[9px] font-black text-slate-400 uppercase bg-slate-100 px-3 py-1.5 rounded-full">Aucune séance active</div>
             )}
-            <div className="w-10 h-10 rounded-full bg-slate-900 flex items-center justify-center text-white font-black text-xs shadow-lg border-2 border-white">{user?.email?.charAt(0).toUpperCase()}</div>
+            <div className="flex items-center gap-3">
+              <span className="hidden md:block text-[9px] font-black uppercase text-slate-400">{user?.email}</span>
+              <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-black text-[10px] uppercase shadow-md">{user?.email?.charAt(0)}</div>
+            </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-3 lg:p-10 bg-[#FBFDFF] scroll-smooth pb-24">
-            <div className="max-w-6xl mx-auto space-y-4 lg:space-y-8">
-               {currentPage === 'dashboard' && <DashboardView stats={stats} members={members} currency={currency} isVisionOnly={isVisionOnly} onAddMember={handleAddMember} onAddTransaction={handleAddTransaction} themeGradient={themeGradient} activeMeetingDate={activeMeetingDate} setActiveMeetingDate={setActiveMeetingDate} />}
+        <div className="flex-1 overflow-y-auto p-4 lg:p-10 scrollbar-hide">
+            <div className="max-w-6xl mx-auto space-y-8">
+               {currentPage === 'dashboard' && <DashboardView stats={stats} members={members} currency={currency} isVisionOnly={isVisionOnly} onAddMember={handleAddMember} onAddTransaction={handleAddTransaction} themeGradient={themeGradient} activeMeetingDate={activeMeetingDate} setActiveMeetingDate={setActiveMeetingDate} isPremium={isPremium} />}
                {currentPage === 'members' && <MembersView members={members} activeMeetingDate={activeMeetingDate} transactions={transactions} loans={loans} rotations={rotations} currency={currency} onDelete={handleDelete} isVisionOnly={isVisionOnly} onUpdate={handleUpdateMember} />}
                {currentPage === 'reports' && <ReportsView members={members} transactions={transactions} rotations={rotations} loans={loans} currency={currency} themeGradient={themeGradient} defaultDate={activeMeetingDate} />}
                {currentPage === 'finances' && <FinancesView transactions={filteredTransactions} allTransactions={transactions} members={members} currency={currency} onDelete={handleDelete} onUpdate={handleUpdateTransaction} isVisionOnly={isVisionOnly} activeMeetingDate={activeMeetingDate} />}
                {currentPage === 'rotations' && <RotationsView members={members} rotations={rotations} activeMeetingDate={activeMeetingDate} onAddRotation={handleAddRotation} onDelete={handleDelete} isVisionOnly={isVisionOnly} />}
                {currentPage === 'fonds' && (
                 <div className="space-y-4">
-                   <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-wrap gap-4 items-center animate-in fade-in text-slate-800">
-                     <Icon name="filter" className="w-4 h-4 text-slate-400" />
+                   <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
                      <select value={globalFilter.memberId} onChange={(e) => setGlobalFilter({...globalFilter, memberId: e.target.value})} className="flex-1 p-2 bg-slate-50 border-none rounded-xl text-[10px] font-bold outline-none text-slate-800"><option value="">Tous les membres</option>{members.map(m => <option key={m.id} value={String(m.id)}>{String(m.name)}</option>)}</select>
-                     {selectedBalanceValue !== null && (<div className="bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-100 text-emerald-700 text-[10px] font-black uppercase">Solde: {formatCurrency(selectedBalanceValue, currency)}</div>)}
-                     <button onClick={() => setGlobalFilter({memberId: '', date: ''})} className="text-[9px] font-black text-rose-500 uppercase">Reset</button>
+                     {selectedBalanceValue !== null && (<div className="bg-emerald-50 px-3 py-1.5 rounded-xl text-emerald-700 text-[10px] font-black uppercase">Solde Net: {formatCurrency(selectedBalanceValue, currency)}</div>)}
                    </div>
-                   <GenericHistory title={`Caisse - Réunion ${activeMeetingDate || 'Globale'}`} transactions={activeMeetingDate ? filteredTransactions.filter(t => t.type === 'fonds' && (!globalFilter.memberId || t.memberId === globalFilter.memberId)) : transactions.filter(t => t.type === 'fonds')} members={members} currency={currency} onDelete={handleDelete} onUpdate={handleUpdateTransaction} isVisionOnly={isVisionOnly} />
+                   <GenericHistory title={`Fond de caisse - ${activeMeetingDate || 'Global'}`} transactions={activeMeetingDate ? filteredTransactions.filter(t => t.type === 'fonds' && (!globalFilter.memberId || t.memberId === globalFilter.memberId)) : transactions.filter(t => t.type === 'fonds')} members={members} currency={currency} onDelete={handleDelete} onUpdate={handleUpdateTransaction} isVisionOnly={isVisionOnly} />
                 </div>
                )}
                {currentPage === 'prets' && <LoansView loans={activeMeetingDate ? loans.filter(l => l.startDate === activeMeetingDate) : loans} members={members} currency={currency} onAdd={handleAddLoan} onDelete={handleDelete} isVisionOnly={isVisionOnly} themeGradient={themeGradient} activeMeetingDate={activeMeetingDate} />}
-               {currentPage === 'settings' && <SettingsView currency={currency} setCurrency={setCurrency} profile={profile} onUpgrade={handleRequestPro} isAdmin={user?.email === ADMIN_EMAIL} allUsers={allUsers} onApprove={handleApprovePro} onCancel={handleCancelPro} onAdminDelete={handleAdminDeleteUser} isVisionOnly={isVisionOnly} />}
+               {currentPage === 'settings' && <SettingsView currency={currency} setCurrency={setCurrency} profile={profile} onUpgrade={handleRequestPro} isAdmin={user?.email === ADMIN_EMAIL} allUsers={allUsers} onApprove={handleApprovePro} onAdminDelete={handleAdminDeleteUser} isVisionOnly={isVisionOnly} />}
             </div>
         </div>
 
-        <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-white/95 backdrop-blur-xl border-t border-slate-100 flex justify-around items-center p-2 shadow-2xl">
-            {[ { id: 'dashboard', icon: 'dashboard', label: 'Home' }, { id: 'members', icon: 'members', label: 'Membres' }, { id: 'finances', icon: 'cotisations', label: 'Finances' }, { id: 'reports', icon: 'fileText', label: 'Rapport' }, { id: 'menu', icon: 'dots', label: 'Plus' } ].map((tab) => (
-              <button key={tab.id} onClick={() => tab.id === 'menu' ? setIsMobileMenuOpen(true) : setCurrentPage(tab.id)} className={`flex flex-col items-center gap-1 p-2 rounded-2xl transition-all active:scale-90 ${currentPage === tab.id ? (isPremium ? 'text-amber-500' : 'text-indigo-600') : 'text-slate-400'}`}>
-                 <Icon name={tab.icon} className="w-6 h-6" />
-                 <span className="text-[8px] font-bold uppercase">{String(tab.label)}</span>
-              </button>
+        <div className="lg:hidden bg-white border-t flex justify-around p-2 shadow-2xl">
+            {[ { id: 'dashboard', icon: 'dashboard' }, { id: 'members', icon: 'members' }, { id: 'finances', icon: 'cotisations' }, { id: 'reports', icon: 'fileText' } ].map(tab => (
+              <button key={tab.id} onClick={() => setCurrentPage(tab.id)} className={`p-2 transition-colors ${currentPage === tab.id ? 'text-indigo-600' : 'text-slate-400'}`}><Icon name={tab.icon} /></button>
             ))}
+            <button onClick={() => setIsMobileMenuOpen(true)} className="p-2 text-slate-400"><Icon name="dots" /></button>
         </div>
       </main>
 
       {isMobileMenuOpen && (
-        <div className="fixed inset-0 z-[100] lg:hidden animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-[100] lg:hidden animate-in fade-in">
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)}></div>
-          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-[3rem] shadow-2xl flex flex-col p-8 pb-12 animate-in slide-in-from-bottom duration-300 max-h-[85vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-8"><h2 className="text-xl font-black uppercase">Options</h2><button onClick={() => setIsMobileMenuOpen(false)} className="p-2 bg-slate-50 rounded-full text-slate-600"><Icon name="close" /></button></div>
+          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-[3rem] p-8 space-y-4 shadow-2xl">
+            <div className="bg-emerald-50 p-4 rounded-2xl flex items-center justify-between border border-emerald-100">
+              <div className="flex items-center gap-3">
+                <Icon name="phone" className="text-emerald-500 w-5 h-5" />
+                <span className="text-[10px] font-black text-emerald-700 uppercase tracking-tighter">Assistance: {WHATSAPP_SUPPORT}</span>
+              </div>
+              <a href={`https://wa.me/${WHATSAPP_SUPPORT.replace(/^00/, '')}`} className="p-2 bg-emerald-500 text-white rounded-xl active:scale-95 transition-all shadow-sm">
+                <Icon name="phone" className="w-4 h-4" />
+              </a>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
-              {NAV_ITEMS.concat([{ id: 'settings', label: 'Paramètres', icon: 'settings' }]).map(item => (
-                <button key={item.id} onClick={() => { setCurrentPage(item.id); setIsMobileMenuOpen(false); }} className={`flex items-center gap-3 p-4 rounded-[1.5rem] border transition-all ${currentPage === item.id ? 'bg-indigo-50 border-indigo-100 text-indigo-700 font-black' : 'bg-slate-50 border-slate-50 text-slate-600'}`}><Icon name={item.icon} className="w-5 h-5" /><span className="text-[10px] font-black uppercase">{String(item.label)}</span></button>
+              {NAV_LINKS.map(item => (
+                <button key={item.id} onClick={() => { setCurrentPage(item.id); setIsMobileMenuOpen(false); }} className={`flex items-center gap-3 p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${currentPage === item.id ? 'text-indigo-600 bg-indigo-50 border border-indigo-100' : 'text-slate-800 bg-slate-50 border border-slate-100'}`}>
+                  <Icon name={item.icon} className="w-5 h-5" />
+                  {String(item.label)}
+                </button>
               ))}
             </div>
-            <button onClick={handleLogout} className="mt-8 p-5 bg-rose-50 text-rose-500 rounded-3xl text-[11px] font-black uppercase flex items-center justify-center gap-4 active:scale-95 transition-all"><Icon name="logout" /> Déconnexion</button>
+            <button onClick={handleLogout} className="w-full p-5 bg-rose-50 text-rose-500 rounded-2xl text-[10px] font-black uppercase shadow-sm border border-rose-100">Déconnexion</button>
           </div>
         </div>
       )}
     </div>
   );
 }
-
-// ==========================================
-// SOUS-COMPOSANTS DE VUE
-// ==========================================
-
-const DashboardView = ({ stats, members, currency, isVisionOnly, onAddMember, onAddTransaction, themeGradient, activeMeetingDate, setActiveMeetingDate }) => {
-  const [op, setOp] = useState({ mId: '', amt: '', type: 'cotisation', dir: 'in', method: 'cash' });
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [nameInput, setNameInput] = useState('');
-  const [isConfirming, setIsConfirming] = useState(false);
-
-  return (
-    <div className="space-y-4 lg:space-y-8 animate-in fade-in slide-in-from-bottom-6 duration-500">
-      <div className="bg-white p-6 rounded-[2rem] border-2 border-indigo-100 shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg"><Icon name="calendar" /></div>
-          <div>
-            <h2 className="text-sm font-black uppercase text-slate-800">Date de Réunion Active</h2>
-            <p className="text-[10px] text-slate-400 font-medium">Sélectionnez la réunion pour synchroniser toutes les pages.</p>
-          </div>
-        </div>
-        <input type="date" value={activeMeetingDate || ""} onChange={(e) => setActiveMeetingDate(e.target.value)} className="md:w-64 p-4 bg-slate-50 border-none rounded-2xl font-black text-sm outline-none text-indigo-600 shadow-inner" />
-      </div>
-
-      {!activeMeetingDate ? (
-        <div className="bg-amber-50 p-10 rounded-[3rem] border-2 border-dashed border-amber-200 text-center animate-pulse">
-            <Icon name="bell" className="w-12 h-12 text-amber-500 mx-auto mb-4" />
-            <h3 className="text-xl font-black uppercase text-amber-700">Aucune réunion active</h3>
-            <p className="text-xs text-amber-600 max-w-sm mx-auto mt-2">Sélectionnez une date ci-dessus pour activer les fonctionnalités.</p>
-        </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-6">
-              {!isVisionOnly && (
-                <div onClick={() => { setShowAddModal(true); setIsConfirming(false); }} className={`cursor-pointer bg-gradient-to-br ${themeGradient} p-4 lg:p-6 rounded-[1.5rem] lg:rounded-[2rem] shadow-xl text-white relative overflow-hidden group border-4 border-white/20 active:scale-95 transition-all`}>
-                  <p className="text-[8px] lg:text-[10px] font-black uppercase tracking-widest opacity-80 mb-1">Gestion</p>
-                  <h3 className="text-base lg:text-xl font-black">Inscrire Membre</h3>
-                  <div className="absolute -bottom-2 -right-2 opacity-20 group-hover:scale-110"><Icon name="plus" className="w-16 h-16 lg:w-20 lg:h-20" /></div>
-                </div>
-              )}
-              
-              <div className="bg-white p-4 lg:p-6 rounded-[1.5rem] lg:rounded-[2rem] shadow-sm border border-slate-100 flex flex-col justify-between overflow-hidden min-h-[110px]">
-                <p className="text-[8px] lg:text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Cotisations Séance</p>
-                <h3 className="text-base lg:text-lg font-black text-indigo-600 truncate">
-                  {formatCurrency(stats?.cotisations || 0, currency)}
-                </h3>
-              </div>
-              
-              <div className="bg-white p-4 lg:p-6 rounded-[1.5rem] lg:rounded-[2rem] shadow-sm border border-slate-100 flex flex-col justify-between overflow-hidden min-h-[110px]">
-                <p className="text-[8px] lg:text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Caisse Sociale</p>
-                <h3 className="text-base lg:text-lg font-black text-emerald-600 truncate">
-                  {formatCurrency(stats?.fonds || 0, currency)}
-                </h3>
-              </div>
-              
-              <div className="bg-white p-4 lg:p-6 rounded-[1.5rem] lg:rounded-[2rem] shadow-sm border border-slate-100 flex flex-col justify-between overflow-hidden min-h-[110px]">
-                <p className="text-[8px] lg:text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Épargne Séance</p>
-                <h3 className="text-base lg:text-lg font-black text-sky-600 truncate">
-                  {formatCurrency(stats?.epargne || 0, currency)}
-                </h3>
-              </div>
-          </div>
-
-          {!isVisionOnly && (
-            <div className="bg-white p-5 lg:p-10 rounded-[2rem] lg:rounded-[3rem] border border-slate-100 shadow-sm animate-in fade-in">
-              <h3 className="text-[11px] font-black uppercase mb-4 flex items-center gap-3 text-slate-700"><div className="w-1 h-4 bg-indigo-600 rounded-full" /> Enregistrer un Mouvement ({activeMeetingDate})</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-6">
-                  <select value={op.mId} onChange={(e)=>setOp({...op, mId:e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-xs outline-none shadow-inner text-slate-800"><option value="">Choisir Membre...</option>{members.map((m)=><option key={m.id} value={String(m.id)}>{String(m.name)}</option>)}</select>
-                  <select value={op.type} onChange={(e)=>setOp({...op, type:e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-xs outline-none shadow-inner text-slate-800"><option value="cotisation">Cotisation</option><option value="epargne">Épargne</option><option value="fonds">Caisse Sociale</option></select>
-                  <select value={op.method} onChange={(e)=>setOp({...op, method:e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-xs outline-none shadow-inner text-slate-800"><option value="cash">Espèces</option><option value="momo">Momo (Attente)</option><option value="wave">Wave (Attente)</option></select>
-                  <div className="md:col-span-2 lg:col-span-3 flex bg-slate-100 rounded-2xl p-1">
-                    <button onClick={()=>setOp({...op,dir:'in'})} className={`flex-1 py-3 rounded-xl text-[9px] font-black uppercase ${op.dir==='in'?'bg-white shadow text-indigo-600':'text-slate-400'}`}>Dépôt</button>
-                    <button onClick={()=>setOp({...op,dir:'out'})} className={`flex-1 py-3 rounded-xl text-[9px] font-black uppercase ${op.dir==='out'?'bg-white shadow text-rose-600':'text-slate-400'}`}>Retrait</button>
-                  </div>
-                  <input type="number" value={op.amt} onChange={(e)=>setOp({...op,amt:e.target.value})} className="md:col-span-2 lg:col-span-3 p-4 bg-slate-50 rounded-2xl font-black text-2xl text-center outline-none border border-slate-100 shadow-inner text-slate-900" placeholder="0.00" />
-                  <ActionButton onClick={async () => { if(!op.mId||!op.amt) return; await onAddTransaction(op.mId,op.dir==='in'?Number(op.amt):-Number(op.amt),op.type, op.method); setOp({...op,amt:''}); }} label="Valider" className="md:col-span-2 lg:col-span-3 bg-slate-900 text-white p-4 lg:p-6 rounded-2xl lg:rounded-3xl font-black text-xs uppercase" />
-              </div>
-            </div>
-          )}
-        </>
-      )}
-
-      {showAddModal && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center p-6 animate-in zoom-in-95">
-            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={() => { if(!isConfirming) setShowAddModal(false); }}></div>
-            <div className="relative w-full max-w-sm bg-white rounded-[2.5rem] p-8 shadow-2xl overflow-hidden">
-               <h2 className="text-xl font-black uppercase mb-6 text-slate-800">
-                {isConfirming ? "Confirmer Inscription" : "Nouveau Membre"}
-               </h2>
-
-               {!isConfirming ? (
-                 <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-                    <input 
-                      type="text" 
-                      placeholder="Nom complet..." 
-                      value={nameInput} 
-                      onChange={e=>setNameInput(e.target.value)} 
-                      className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold mb-4 outline-none shadow-inner text-slate-900" 
-                    />
-                    <div className="flex gap-3">
-                      <button onClick={() => setShowAddModal(false)} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black text-[10px] uppercase transition-all active:scale-95">Annuler</button>
-                      <button 
-                        onClick={() => { if(nameInput.trim()) setIsConfirming(true); }} 
-                        className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase shadow-lg shadow-indigo-100 transition-all active:scale-95"
-                      >
-                        Enregistrer
-                      </button>
-                    </div>
-                 </div>
-               ) : (
-                 <div className="animate-in fade-in slide-in-from-left-4 duration-300">
-                    <p className="text-[11px] text-slate-500 mb-8 leading-relaxed">
-                      Voulez-vous vraiment enregistrer le membre <strong className="text-indigo-600">{nameInput}</strong> ?
-                    </p>
-                    <div className="flex gap-3">
-                      <button onClick={() => setIsConfirming(false)} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black text-[10px] uppercase transition-all active:scale-95">Retour</button>
-                      <ActionButton 
-                        onClick={async () => { 
-                          try {
-                            await onAddMember(nameInput.trim()); 
-                            setNameInput(''); 
-                            setIsConfirming(false);
-                            setShowAddModal(false); 
-                          } catch (e) {
-                            console.error("Failed to add member:", e);
-                          }
-                        }} 
-                        label="Confirmer" 
-                        className="flex-1 bg-emerald-600 text-white rounded-2xl font-black text-[10px] uppercase shadow-lg shadow-emerald-100" 
-                      />
-                    </div>
-                 </div>
-               )}
-            </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-const FinancesView = ({ transactions, allTransactions, members, currency, onDelete, onUpdate, isVisionOnly, activeMeetingDate }) => {
-  const [showHistory, setShowHistory] = useState(false);
-  
-  return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm">
-        <h2 className="text-xs font-black uppercase text-slate-500 text-slate-500">{showHistory ? "Tout l'historique" : `Données du ${activeMeetingDate || '?'}`}</h2>
-        <button onClick={() => setShowHistory(!showHistory)} className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase transition-all ${showHistory ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'}`}>{showHistory ? "Mode Séance" : "Voir Historique"}</button>
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="space-y-4">
-            <div className="flex items-center gap-3 px-2"><div className="w-2 h-6 bg-indigo-500 rounded-full" /><h2 className="text-sm font-black uppercase tracking-widest text-slate-800">Cotisations</h2></div>
-            <GenericHistory title="" transactions={(showHistory ? (allTransactions || []) : (transactions || [])).filter((t) => t.type === 'cotisation')} members={members} currency={currency} onDelete={onDelete} onUpdate={onUpdate} isVisionOnly={isVisionOnly} />
-        </div>
-        <div className="space-y-4">
-            <div className="flex items-center gap-3 px-2"><div className="w-2 h-6 bg-sky-500 rounded-full" /><h2 className="text-sm font-black uppercase tracking-widest text-slate-800">Épargne</h2></div>
-            <GenericHistory title="" transactions={(showHistory ? (allTransactions || []) : (transactions || [])).filter((t) => t.type === 'epargne')} members={members} currency={currency} onDelete={onDelete} onUpdate={onUpdate} isVisionOnly={isVisionOnly} />
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const ReportsView = ({ members, transactions, rotations, loans, currency, themeGradient, defaultDate }) => {
-  const [reportDate, setReportDate] = useState(defaultDate || new Date().toISOString().split('T')[0]);
-  const [showPreview, setShowPreview] = useState(false);
-
-  useEffect(() => { if (defaultDate) setReportDate(defaultDate); }, [defaultDate]);
-
-  const sessionData = useMemo(() => {
-    const d = String(reportDate || "");
-    const trans = (transactions || []).filter((t) => String(t.date) === d && t.status === 'completed');
-    const rot = (rotations || []).find((r) => String(r.date) === d);
-    const sLoans = (loans || []).filter((l) => String(l.startDate) === d);
-    
-    return {
-      date: d,
-      beneficiary: members.find((m) => m.id === rot?.beneficiaryMemberId)?.name || 'Non défini',
-      host: members.find((m) => m.id === rot?.hostMemberId)?.name || 'Non défini',
-      membersList: (members || []).map((m) => {
-        const mTrans = trans.filter((t) => t.memberId === m.id);
-        const mLoan = sLoans.find((l) => l.memberId === m.id);
-        return {
-          name: m.name,
-          cotis: mTrans.filter((t) => t.type === 'cotisation').reduce((s, t) => s + t.amount, 0),
-          epargne: mTrans.filter((t) => t.type === 'epargne').reduce((s, t) => s + t.amount, 0),
-          caisse: mTrans.filter((t) => t.type === 'fonds').reduce((s, t) => s + t.amount, 0), 
-          pret: mLoan?.principal || 0
-        };
-      }),
-      totals: {
-        cotis: trans.filter((t) => t.type === 'cotisation').reduce((s, t) => s + t.amount, 0),
-        epargne: trans.filter((t) => t.type === 'epargne').reduce((s, t) => s + t.amount, 0),
-        caisse: trans.filter((t) => t.type === 'fonds').reduce((s, t) => s + t.amount, 0),
-        prets: sLoans.reduce((s, l) => s + l.principal, 0)
-      }
-    };
-  }, [reportDate, transactions, rotations, loans, members]);
-
-  return (
-    <div className="space-y-6 text-slate-800">
-      <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
-         <h2 className="text-xl font-black uppercase mb-6 text-slate-800">Générer un rapport</h2>
-         <div className="flex flex-col sm:flex-row gap-4 text-slate-800">
-            <input type="date" value={reportDate || ""} onChange={e=>setReportDate(e.target.value)} className="flex-1 p-4 bg-slate-50 border border-slate-100 rounded-2xl font-black text-sm outline-none text-indigo-600 shadow-inner" />
-            <button onClick={() => setShowPreview(true)} className={`px-8 py-4 bg-gradient-to-br ${themeGradient} text-white rounded-2xl font-black text-[10px] uppercase shadow-lg shadow-indigo-100 transition-all active:scale-95`}>Voir le rapport</button>
-         </div>
-      </div>
-
-      {showPreview && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
-           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={()=>setShowPreview(false)}></div>
-           <div className="relative w-full max-w-5xl bg-white rounded-[3rem] shadow-2xl p-8 max-h-[90vh] overflow-y-auto">
-              <div className="text-center mb-10 border-b border-slate-100 pb-8">
-                 <h1 className="text-2xl font-black uppercase tracking-tighter text-slate-800 mb-2">Compte Rendu Financier</h1>
-                 <p className="text-xs font-black text-indigo-600 bg-indigo-50 px-4 py-1 rounded-full w-fit mx-auto uppercase">Séance du {String(sessionData.date)}</p>
-              </div>
-              <div className="grid grid-cols-2 gap-4 mb-10 text-center">
-                 <div className="bg-emerald-50 p-4 rounded-3xl"><p className="text-[9px] font-black uppercase text-emerald-400 mb-1 text-emerald-400">Bénéficiaire</p><p className="text-sm font-black text-emerald-600">{String(sessionData.beneficiary)}</p></div>
-                 <div className="bg-indigo-50 p-4 rounded-3xl"><p className="text-[9px] font-black uppercase text-indigo-400 mb-1 text-indigo-400">Hôte (Réception)</p><p className="text-sm font-black text-indigo-600">{String(sessionData.host)}</p></div>
-              </div>
-              <div className="overflow-x-auto mb-10">
-                 <table className="w-full text-left text-[11px] text-slate-800">
-                   <thead>
-                     <tr className="bg-slate-50 text-[9px] font-black uppercase text-slate-400 text-slate-400">
-                       <th className="px-4 py-3 text-slate-800">Membre</th>
-                       <th className="px-4 py-3 text-slate-800">Cotisation</th>
-                       <th className="px-4 py-3 text-sky-600">Épargne</th>
-                       <th className="px-4 py-3 text-emerald-600">Fond de caisse</th>
-                       <th className="px-4 py-3 text-rose-500">Prêt</th>
-                     </tr>
-                   </thead>
-                   <tbody className="divide-y divide-slate-100 text-slate-800">
-                     {sessionData.membersList.map((m, i) => {
-                       return (
-                         <tr key={i} className="hover:bg-slate-50">
-                           <td className="px-4 py-4 font-bold text-slate-700">{String(m.name)}</td>
-                           <td className="px-4 py-4 font-black">{formatCurrency(m.cotis, currency)}</td>
-                           <td className="px-4 py-4 font-black text-sky-600">{formatCurrency(m.epargne, currency)}</td>
-                           <td className={`px-4 py-4 font-black ${m.caisse >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{formatCurrency(m.caisse, currency)}</td>
-                           <td className="px-4 py-4 font-black text-rose-500">{formatCurrency(m.pret, currency)}</td>
-                         </tr>
-                       );
-                     })}
-                   </tbody>
-                   <tfoot className="bg-slate-900 text-white font-black">
-                     <tr>
-                       <td className="px-4 py-4 uppercase">Totaux de séance</td>
-                       <td className="px-4 py-4">{formatCurrency(sessionData.totals.cotis, currency)}</td>
-                       <td className="px-4 py-4">{formatCurrency(sessionData.totals.epargne, currency)}</td>
-                       <td className="px-4 py-4 text-emerald-400">{formatCurrency(sessionData.totals.caisse, currency)}</td>
-                       <td className="px-4 py-4 text-rose-400">{formatCurrency(sessionData.totals.prets, currency)}</td>
-                     </tr>
-                   </tfoot>
-                 </table>
-              </div>
-              <div className="flex gap-4">
-                 <button onClick={()=>window.print()} className="flex-1 py-5 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase shadow-xl">Imprimer en PDF</button>
-                 <button onClick={()=>setShowPreview(false)} className="px-8 py-5 bg-slate-100 text-slate-400 rounded-2xl font-black text-[10px] uppercase">Fermer</button>
-              </div>
-           </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-const RotationsView = ({ members, rotations, activeMeetingDate, onAddRotation, onDelete, isVisionOnly }) => {
-  const [beneficiary, setBeneficiary] = useState("");
-  const [host, setHost] = useState("");
-  const [customDate, setCustomDate] = useState("");
-
-  const sortedRotations = useMemo(() => {
-    return [...rotations].sort((a, b) => new Date(a.date) - new Date(b.date));
-  }, [rotations]);
-
-  return (
-    <div className="space-y-6">
-      {!isVisionOnly && (
-        <div className="bg-white p-6 lg:p-8 rounded-[2rem] border border-slate-100 shadow-sm animate-in zoom-in-95">
-           <h2 className="text-sm font-black uppercase text-slate-700 mb-6 tracking-widest flex items-center gap-2 text-slate-700">
-             <Icon name="calendar" className="w-4 h-4 text-indigo-600" /> Programmer une séance (Long terme)
-           </h2>
-           <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-slate-800 text-slate-800">
-                <div className="space-y-2">
-                  <label className="text-[9px] font-black uppercase text-slate-400 ml-1 text-slate-400">Date de la séance</label>
-                  <input type="date" value={customDate} onChange={(e) => setCustomDate(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-xs outline-none text-indigo-600" />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[9px] font-black uppercase text-slate-400 ml-1 text-slate-400">Bénéficiaire (Preneur)</label>
-                  <select value={beneficiary} onChange={(e) => setBeneficiary(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-xs outline-none text-slate-800 text-slate-800">
-                    <option value="">Sélectionner...</option>
-                    {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[9px] font-black uppercase text-slate-400 ml-1 text-slate-400">Membre Hôte (Réception)</label>
-                  <select value={host} onChange={(e) => setHost(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-xs outline-none text-slate-800 text-slate-800">
-                    <option value="">Sélectionner...</option>
-                    {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                  </select>
-                </div>
-              </div>
-              <ActionButton onClick={async () => { if(!beneficiary || !host || !customDate) return; await onAddRotation(beneficiary, host, customDate); setBeneficiary(""); setHost(""); setCustomDate(""); }} label="Ajouter au calendrier" className="w-full bg-indigo-600 text-white p-5 rounded-3xl font-black text-[10px] uppercase shadow-xl" />
-           </div>
-        </div>
-      )}
-
-      <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden text-slate-800 text-slate-800">
-        <div className="p-5 bg-slate-50 border-b border-slate-100 text-slate-500 text-slate-500">
-          <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Calendrier des rotations programmées</h3>
-        </div>
-        <div className="overflow-x-auto text-slate-800 text-slate-800">
-          <table className="w-full text-left text-[11px] text-slate-800 text-slate-800">
-            <thead>
-              <tr className="bg-slate-50/50 text-[8px] font-black uppercase text-slate-400 text-slate-400">
-                <th className="px-6 py-3">Date</th>
-                <th className="px-6 py-3">Bénéficiaire</th>
-                <th className="px-6 py-3">Hôte</th>
-                {!isVisionOnly && <th className="px-6 py-3 text-right">Action</th>}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50 text-slate-800 text-slate-800">
-              {sortedRotations.length === 0 ? (
-                <tr><td colSpan="4" className="p-10 text-center text-slate-300 italic text-slate-300">Aucune séance programmée pour le moment.</td></tr>
-              ) : (
-                sortedRotations.map(rot => (
-                  <tr key={rot.id} className={`hover:bg-slate-50 transition-colors ${rot.date === activeMeetingDate ? 'bg-indigo-50/30' : ''}`}>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2 text-slate-700">
-                        <span className={`w-2 h-2 rounded-full ${rot.date === activeMeetingDate ? 'bg-indigo-500 animate-pulse' : 'bg-slate-200'}`}></span>
-                        <p className="font-bold text-slate-600">{rot.date}</p>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 font-black text-emerald-600 uppercase text-emerald-600">
-                      {members.find(m => m.id === rot.beneficiaryMemberId)?.name}
-                    </td>
-                    <td className="px-6 py-4 font-black text-indigo-600 uppercase text-indigo-600">
-                      {members.find(m => m.id === rot.hostMemberId)?.name}
-                    </td>
-                    {!isVisionOnly && (
-                      <td className="px-6 py-4 text-right">
-                        <button onClick={() => onDelete('rotations', rot.id)} className="p-2 text-slate-300 hover:text-rose-500 transition-colors text-slate-300 hover:text-rose-500">
-                          <Icon name="trash" className="w-4 h-4" />
-                        </button>
-                      </td>
-                    )}
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const MembersView = ({ members, activeMeetingDate, transactions, loans, rotations, currency, onDelete, isVisionOnly, onUpdate }) => {
-  const [selectedMember, setSelectedMember] = useState(null);
-  
-  const editMember = (id, cn) => { const n = prompt("Nouveau nom :", cn); if (n && n.trim()) onUpdate(id, n.trim()); };
-
-  const memberReport = useMemo(() => {
-    if (!selectedMember || !activeMeetingDate) return null;
-    const mId = selectedMember.id;
-    const mTrans = transactions.filter(t => t.memberId === mId && t.date === activeMeetingDate && t.status === 'completed');
-    const mLoan = loans.find(l => l.memberId === mId && l.startDate === activeMeetingDate);
-    const mRotation = rotations.find(r => r.date === activeMeetingDate && (r.beneficiaryMemberId === mId || r.hostMemberId === mId));
-
-    return {
-      name: selectedMember.name,
-      cotis: mTrans.filter(t => t.type === 'cotisation').reduce((s, t) => s + t.amount, 0),
-      epargne: mTrans.filter(t => t.type === 'epargne').reduce((s, t) => s + t.amount, 0),
-      fonds: mTrans.filter(t => t.type === 'fonds').reduce((s, t) => s + t.amount, 0),
-      loan: mLoan?.principal || 0,
-      isBeneficiary: mRotation?.beneficiaryMemberId === mId,
-      isHost: mRotation?.hostMemberId === mId
-    };
-  }, [selectedMember, activeMeetingDate, transactions, loans, rotations]);
-
-  return (
-    <div className="space-y-8">
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 lg:gap-6 animate-in fade-in">
-        {(members || []).map((m) => (
-          <div key={m.id} onClick={() => setSelectedMember(m)} className="cursor-pointer bg-white p-4 rounded-[1.5rem] border border-slate-100 flex items-center justify-between group shadow-sm hover:shadow-md transition-all active:scale-95">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center font-black text-emerald-600 text-sm">{(String(m?.name) || '?').charAt(0)}</div>
-              <p className="font-bold text-xs text-slate-800">{String(m.name)}</p>
-            </div>
-            {!isVisionOnly && (
-              <div className="flex space-x-1">
-                <button onClick={(e)=>{ e.stopPropagation(); editMember(m.id, m.name); }} className="p-2 text-slate-200 hover:text-indigo-600"><Icon name="edit" className="w-4 h-4" /></button>
-                <button onClick={(e)=>{ e.stopPropagation(); onDelete('members', m.id); }} className="p-2 text-slate-200 hover:text-rose-500"><Icon name="trash" className="w-4 h-4" /></button>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {selectedMember && (
-        <div className="fixed inset-0 z-[400] flex items-center justify-center p-6">
-           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={() => setSelectedMember(null)}></div>
-           <div className="relative w-full max-w-sm bg-white rounded-[2.5rem] shadow-2xl p-8 animate-in zoom-in-95">
-              <div className="flex justify-between items-center mb-6 text-slate-800">
-                <h2 className="text-lg font-black uppercase text-slate-800">Bilan séance</h2>
-                <button onClick={() => setSelectedMember(null)} className="p-2 bg-slate-50 rounded-full text-slate-600"><Icon name="close" /></button>
-              </div>
-              
-              <div className="text-center mb-8 text-slate-800">
-                <div className="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 mx-auto mb-2 text-2xl font-black">{selectedMember.name.charAt(0)}</div>
-                <h3 className="text-lg font-black text-slate-800">{selectedMember.name}</h3>
-                <p className="text-[10px] font-black text-indigo-500 uppercase">Réunion du {activeMeetingDate || '?'}</p>
-              </div>
-
-              {!activeMeetingDate ? (
-                <p className="text-center text-rose-500 text-[10px] font-bold">Sélectionnez une réunion sur le Dashboard pour voir le rapport.</p>
-              ) : (
-                <div className="space-y-3">
-                  <div className="flex justify-between p-3 bg-slate-50 rounded-xl"><span className="text-[10px] font-black uppercase text-slate-400">Cotisation</span><span className="text-xs font-black text-slate-800">{formatCurrency(memberReport.cotis, currency)}</span></div>
-                  <div className="flex justify-between p-3 bg-slate-50 rounded-xl"><span className="text-[10px] font-black uppercase text-slate-400">Épargne</span><span className="text-xs font-black text-slate-800">{formatCurrency(memberReport.epargne, currency)}</span></div>
-                  <div className="flex justify-between p-3 bg-slate-50 rounded-xl"><span className="text-[10px] font-black uppercase text-slate-400">Fond de Caisse (Net)</span><span className={`text-xs font-black ${memberReport.fonds >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{formatCurrency(memberReport.fonds, currency)}</span></div>
-                  <div className="flex justify-between p-3 bg-slate-50 rounded-xl"><span className="text-[10px] font-black uppercase text-slate-400">Prêt Emprunté</span><span className="text-xs font-black text-rose-600">{formatCurrency(memberReport.loan, currency)}</span></div>
-                  
-                  {(memberReport.isBeneficiary || memberReport.isHost) && (
-                    <div className="mt-4 pt-4 border-t border-slate-100 flex gap-2">
-                       {memberReport.isBeneficiary && <span className="flex-1 text-center py-2 bg-emerald-50 text-emerald-600 rounded-lg text-[9px] font-black uppercase text-emerald-600">Bénéficiaire</span>}
-                       {memberReport.isHost && <span className="flex-1 text-center py-2 bg-indigo-50 text-indigo-600 rounded-lg text-[9px] font-black uppercase text-indigo-600">Hôte du jour</span>}
-                    </div>
-                  )}
-                </div>
-              )}
-           </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-const GenericHistory = ({ title, transactions, members, currency, onDelete, onUpdate, isVisionOnly }) => {
-  const edit = (id, old) => { const next = prompt("Montant :", old.toString()); if (next && !isNaN(Number(next))) onUpdate(id, Number(next)); };
-  
-  const grouped = useMemo(() => {
-    return (transactions || []).reduce((groups, t) => {
-      const date = String(t.date || 'Inconnue');
-      if (!groups[date]) groups[date] = [];
-      groups[date].push(t);
-      return groups;
-    }, {});
-  }, [transactions]);
-
-  const sortedDates = Object.keys(grouped).sort((a, b) => new Date(b) - new Date(a));
-
-  return (
-    <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden text-slate-800">
-      {String(title || "") !== "" && <div className="p-5 lg:p-8 border-b border-slate-50 bg-slate-50/50 font-black uppercase text-[10px] tracking-widest text-slate-500 text-slate-500"><h3>{String(title)}</h3></div>}
-      {sortedDates.length === 0 ? <div className="p-8 text-center text-slate-400 text-[10px] font-bold uppercase text-slate-400">Aucune donnée</div> : sortedDates.map(date => (
-          <div key={date} className="border-b border-slate-50 last:border-none">
-            <div className="bg-slate-50/30 px-4 py-2 text-[8px] font-black text-slate-400 uppercase tracking-tighter text-slate-400">{date}</div>
-            <table className="w-full text-left text-[11px] text-slate-800"><tbody className="divide-y divide-slate-50 text-slate-800">{grouped[date].map((t) => (
-                  <tr key={t.id} className="hover:bg-slate-50"><td className="px-4 py-3"><div className="flex items-center gap-2 text-slate-700 text-slate-700"><div className={`w-7 h-7 rounded-full flex items-center justify-center font-black text-[9px] ${t.method === 'cash' ? 'bg-slate-100 text-slate-500' : 'bg-indigo-100 text-indigo-600'}`}>{String(t.method || 'cash').charAt(0).toUpperCase()}</div><p className="font-bold">{String(members.find((m)=>m.id===t.memberId)?.name || '...')}</p></div></td><td className={`px-4 py-3 text-right font-black ${t.amount >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{t.amount >= 0 ? '+' : ''}{formatCurrency(t.amount, currency)}</td><td className="px-4 py-3 text-right space-x-1">{!isVisionOnly && (<><button onClick={(e) => { e.stopPropagation(); edit(t.id, t.amount); }} className="p-1 text-slate-300 active:text-indigo-600 text-slate-300 hover:text-indigo-600"><Icon name="edit" className="w-4 h-4" /></button><button onClick={(e) => { e.stopPropagation(); onDelete('transactions', t.id); }} className="p-1 text-slate-300 active:text-rose-500 text-slate-300 hover:text-rose-500"><Icon name="trash" className="w-4 h-4" /></button></>)}</td></tr>
-                ))}</tbody></table>
-          </div>
-        ))}
-    </div>
-  );
-};
-
-const LoansView = ({ members, loans, currency, onAdd, onDelete, isVisionOnly, themeGradient, activeMeetingDate }) => {
-  const [data, setData] = useState({ mId: '', amt: '', rate: '10', dueDate: '' });
-  const total = (Number(data.amt) || 0) * (1 + (Number(data.rate) || 0) / 100);
-
-  if (!activeMeetingDate) return (
-    <div className="bg-rose-50 p-10 rounded-[3rem] border-2 border-dashed border-rose-200 text-center">
-       <h3 className="text-xl font-black uppercase text-rose-700">Séance non définie</h3>
-       <p className="text-xs text-rose-600 mt-2 text-rose-600">Veuillez sélectionner une réunion sur le Dashboard.</p>
-    </div>
-  );
-
-  return (
-    <div className="space-y-4 lg:space-y-6 text-slate-800">
-      {!isVisionOnly && (
-        <div className="bg-white p-6 lg:p-8 rounded-[2.5rem] border border-slate-100 shadow-sm animate-in zoom-in-95">
-          <h2 className="text-sm font-black uppercase text-slate-700 mb-6 tracking-wider text-slate-700">Octroi de Prêt ({activeMeetingDate})</h2>
-          <div className="space-y-5 text-slate-800">
-            <select value={data.mId} onChange={(e)=>setData({...data, mId:e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-xs outline-none text-slate-800 text-slate-800"><option value="">Choisir un membre...</option>{(members || []).map((m)=><option key={m.id} value={String(m.id)}>{String(m.name)}</option>)}</select>
-            <div className="grid grid-cols-2 gap-4 text-slate-800">
-              <div className="space-y-2"><label className="text-[10px] font-black uppercase text-slate-400 text-slate-400">Capital</label><input type="number" placeholder="Montant" value={data.amt} onChange={(e)=>setData({...data, amt:e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-black text-sm outline-none text-slate-900 shadow-inner" /></div>
-              <div className="space-y-2"><label className="text-[10px] font-black uppercase text-slate-400 text-slate-400">Taux (%)</label><input type="number" value={data.rate} onChange={(e)=>setData({...data, rate:e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-black text-sm outline-none text-slate-900 shadow-inner" /></div>
-            </div>
-            <div className="space-y-2"><label className="text-[10px] font-black uppercase text-slate-400 text-slate-400">Date d'échéance</label><input type="date" value={data.dueDate} onChange={(e)=>setData({...data, dueDate:e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-black text-sm outline-none text-indigo-600 shadow-inner" /></div>
-            <ActionButton onClick={async () => { if(!data.mId || !data.amt || !data.dueDate) return; await onAdd({memberId: data.mId, principal: Number(data.amt), interestRate: Number(data.rate), totalAmount: total, dueDate: data.dueDate, status: 'actif'}); setData({mId:'', amt:'', rate:'10', dueDate:''}); }} label="Valider et enregistrer le prêt" className={`w-full py-5 bg-gradient-to-br ${themeGradient} text-white rounded-3xl font-black text-[11px] uppercase shadow-xl transition-all`} />
-          </div>
-        </div>
-      )}
-      <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden text-slate-800 text-slate-800">
-        <table className="w-full text-left text-[11px] text-slate-800"><tbody className="divide-y divide-slate-50 text-slate-800">{(!loans || loans.length === 0) ? <tr><td className="p-10 text-center text-slate-300 italic text-slate-300 italic">Aucun prêt pour cette séance.</td></tr> : loans.map((l)=>(<tr key={l.id} className="hover:bg-slate-50 transition-colors text-slate-800"><td className="px-6 py-4 font-bold text-slate-700">{String(members.find((m)=>m.id===l.memberId)?.name || 'Inconnu')}</td><td className="px-6 py-4 text-indigo-500 font-black text-[9px] uppercase text-indigo-500">Taux: {l.interestRate}%</td><td className="px-6 py-4"><span className="px-2 py-1 bg-rose-50 text-rose-600 rounded-lg font-black text-[9px] uppercase text-rose-600">{l.dueDate}</span></td><td className="px-6 py-4 text-right font-black text-rose-500 text-sm text-rose-500">{formatCurrency(l.totalAmount, currency)}</td>{!isVisionOnly && <td className="px-6 py-4 text-right"><button onClick={(e)=>{ e.stopPropagation(); onDelete('loans', l.id); }} className="p-2 text-slate-300 hover:text-rose-500 transition-colors text-slate-300 hover:text-rose-500"><Icon name="trash" className="w-4 h-4" /></button></td>}</tr>))}</tbody></table>
-      </div>
-    </div>
-  );
-};
-
-const SettingsView = ({ currency, setCurrency, profile, onUpgrade, isAdmin, allUsers, onApprove, onCancel, onAdminDelete, isVisionOnly }) => {
-  const [exp, setExp] = useState('');
-  const copyInvitation = () => { if (!profile) return; const link = `${window.location.origin}${window.location.pathname}?join=${profile.uid}`; const el = document.createElement('textarea'); el.value = link; document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el); alert("Lien copié !"); };
-
-  return (
-    <div className="space-y-4 lg:space-y-10 pb-20 text-slate-800 text-slate-800">
-      <div className="bg-white p-5 lg:p-10 rounded-[2rem] border border-slate-100 shadow-sm text-slate-800">
-          <h2 className="text-xl font-black uppercase mb-8 flex items-center gap-3 text-slate-800">Compte & Vision</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-10 text-slate-800">
-             <div className="space-y-4 lg:space-y-8 text-slate-800">
-                {!isVisionOnly && (
-                  <div className="p-5 lg:p-8 bg-indigo-50 rounded-[1.5rem] border-2 border-indigo-100 shadow-sm space-y-4 text-slate-800 text-indigo-600">
-                     <p className="font-black text-[10px] uppercase tracking-widest text-indigo-600">Lien Invitation (Vision Seule)</p>
-                     <button onClick={copyInvitation} className="w-full p-4 rounded-2xl font-black text-[10px] uppercase bg-white text-indigo-600 border border-indigo-100 shadow-md flex items-center justify-center gap-2 active:scale-95 text-indigo-600"><Icon name="share" className="w-4 h-4" /> Copier le lien unique</button>
-                  </div>
-                )}
-                <div className="p-5 bg-slate-50 rounded-[1.5rem] shadow-sm border border-slate-100 text-slate-800 text-slate-400">
-                   <p className="font-black text-[9px] lg:text-[10px] uppercase mb-4 tracking-widest text-slate-400">Devise</p>
-                   <select value={currency || "FCFA"} onChange={e => setCurrency(e.target.value)} className="w-full p-4 bg-white border border-slate-100 rounded-2xl font-black text-[11px] outline-none text-slate-800 text-slate-800"><option value="FCFA">FCFA</option><option value="USD">USD</option><option value="EUR">EUR</option></select>
-                </div>
-             </div>
-             <div className="p-8 border-2 border-indigo-50 rounded-[2.5rem] text-center bg-white text-slate-800">
-                <div className="w-12 h-12 bg-indigo-100 rounded-2xl flex items-center justify-center mx-auto mb-4 text-indigo-600"><Icon name="shield" /></div>
-                <h3 className="text-lg font-black uppercase text-slate-800">Paiement & Support</h3>
-                <div className="bg-indigo-50 p-4 rounded-2xl text-left space-y-1 mb-6 text-slate-800 text-indigo-700">
-                    <p className="text-[10px] font-black text-indigo-700">Mobile Money: {MOMO_NUMBER}</p>
-                    <p className="text-[9px] font-medium opacity-80 text-indigo-700">• WhatsApp: {WHATSAPP_SUPPORT}</p>
-                    <p className="text-[9px] font-medium opacity-80 text-indigo-700">• PayPal: j_nguetsop@yahoo.fr</p>
-                </div>
-                {!isVisionOnly && profile?.status === 'none' && <ActionButton onClick={onUpgrade} label="Passer PRO (1€)" className="w-full bg-indigo-600 text-white p-4 rounded-2xl font-black text-xs uppercase shadow-xl" />}
-                {profile?.status === 'pending' && <div className="p-4 bg-amber-50 text-amber-600 font-black text-[10px] uppercase rounded-2xl border border-amber-100 animate-pulse text-amber-600 text-amber-600">Activation en attente...</div>}
-                {profile?.status === 'pro' && <div className="p-4 bg-emerald-50 text-emerald-600 font-black text-[10px] uppercase rounded-2xl border border-emerald-100 shadow-sm text-emerald-600 text-emerald-600">Membre Premium Actif</div>}
-             </div>
-          </div>
-      </div>
-      {isAdmin && (<div className="bg-white p-6 lg:p-10 rounded-[2rem] border-4 border-indigo-100 shadow-xl text-slate-800 text-indigo-600"><h2 className="text-xs font-black uppercase text-indigo-600 mb-6">Admin Panel</h2><div className="overflow-x-auto text-slate-800"><table className="w-full text-left text-slate-800 text-slate-400"><thead><tr className="text-[9px] uppercase text-slate-400"><th>Email</th><th>Échéance</th><th className="text-right">Actions</th></tr></thead><tbody className="divide-y divide-slate-100 text-slate-800">{(allUsers || []).map(u => (<tr key={u.uid}><td className="py-4 text-xs font-bold text-slate-800 text-slate-800 text-slate-800"><div className="flex items-center gap-2">{u.status === 'pending' && <div className="relative flex h-2 w-2 text-rose-500"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span></div>}{String(u.email)}</div></td><td className="py-4 text-[10px] font-black text-indigo-600 text-indigo-600">{String(u.expiryDate || 'N/A')}</td><td className="py-4 text-right space-x-2 text-slate-800 text-slate-800"><input type="date" className="p-1 border rounded text-[10px] text-slate-800" onChange={e=>setExp(e.target.value)} /><button onClick={() => onApprove(u.uid, exp || new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0])} className="bg-emerald-600 text-white px-2 py-1 rounded text-[8px] font-black uppercase">Activer</button><button onClick={() => onAdminDelete(u.uid)} className="bg-rose-500 text-white px-2 py-1 rounded text-[8px] font-black uppercase shadow-sm"><Icon name="trash" className="w-3 h-3 text-white" /></button></td></tr>))}</tbody></table></div></div>)}
-    </div>
-  );
-};

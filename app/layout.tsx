@@ -24,11 +24,16 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
-      </body>
+      <script src="/app-config.js"></script>
+
+     <body
+  className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+>
+  <div className="app-safe-area">
+    {children}
+  </div>
+</body>
+
     </html>
   );
 }

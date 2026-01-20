@@ -1,0 +1,22 @@
+"use client";
+
+import React, { useState } from "react";
+import Dashboard from "./page";
+import Transactions from "./transactions/page";
+
+export default function Bootstrap() {
+  const [screen, setScreen] = useState<"dashboard" | "transactions">("dashboard");
+
+  return (
+    <>
+      {screen === "dashboard" && <Dashboard />}
+      {screen === "transactions" && <Transactions />}
+
+      {/* Navigation minimale globale */}
+      <div style={{ position: "fixed", bottom: 20, left: 20, zIndex: 9999 }}>
+        <button onClick={() => setScreen("dashboard")}>Dashboard</button>
+        <button onClick={() => setScreen("transactions")}>Transactions</button>
+      </div>
+    </>
+  );
+}
