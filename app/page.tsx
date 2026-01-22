@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { 
   getFirestore, 
@@ -11,21 +11,21 @@ import {
   onSnapshot, 
   updateDoc,
   setDoc,
-  query
+  query,
+  getDoc
 } from 'firebase/firestore';
 import { 
   getAuth, 
   onAuthStateChanged, 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
-  sendPasswordResetEmail,
   signOut,
   signInWithCustomToken,
   signInAnonymously
 } from 'firebase/auth';
 
 // ==========================================
-// CONFIGURATION FIREBASE
+// CONFIGURATION FIREBASE & GEMINI
 // ==========================================
 const firebaseConfig = {
   apiKey: "AIzaSyD1uU27aXfdcVaRWAxmj8Md-fQld7E48Dc",
@@ -37,11 +37,15 @@ const firebaseConfig = {
   measurementId: "G-VCQB93KYZB"
 };
 
+const apiKey = "AIzaSyBTYhcsyaWHahX7nHItpcw6pWvSSCEZOxc"; 
 const NJANGI_APP_ID = typeof __app_id !== 'undefined' ? __app_id : "tontine_pour_tous_v1";
 const ADMIN_EMAIL = "wnguetsop@gmail.com";
 const WHATSAPP_SUPPORT = "00393299639430"; 
 const MOMO_NUMBER = "00237674095062"; 
-const FREE_MEMBER_LIMIT = 10; // Limite de membres pour la version gratuite
+
+const FREE_MEMBER_LIMIT = 10; 
+const FREE_AI_LIMIT = 2;
+const PRO_AI_LIMIT = 10;
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
@@ -81,15 +85,15 @@ const Icon = ({ name, className = "w-5 h-5" }) => {
     calendar: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />,
     print: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />,
     phone: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />,
-    whatsapp: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.414 0 .018 5.396 0 12.032c0 2.12.542 4.19 1.578 6.041L0 24l6.105-1.603a11.82 11.82 0 005.94 1.577h.005c6.632 0 12.028-5.396 12.033-12.034a11.81 11.81 0 00-3.527-8.421" />,
-    arrowUp: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />,
+    sparkles: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-7.714 2.143L11 21l-2.286-6.857L1 12l7.714-2.143L11 3z" />,
+    send: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />,
     lock: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />,
   };
   return <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className={className}>{icons[name] || null}</svg>;
 };
 
 // ==========================================
-// COMPOSANTS UI ATOMIQUES
+// COMPOSANTS ATOMIQUES (DÉCLARÉS EN PREMIER)
 // ==========================================
 
 function ActionButton({ onClick, label, className = "", icon }) {
@@ -104,7 +108,7 @@ function ActionButton({ onClick, label, className = "", icon }) {
   return (
     <button onClick={handleAction} disabled={loading} className={`relative flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-80 cursor-pointer ${className}`}>
       {!loading ? (
-        <span className="flex items-center gap-2">{icon && <Icon name={icon} className="w-4 h-4" />} {String(label)}</span>
+        <span className="flex items-center gap-2 tracking-tighter">{icon && <Icon name={icon} className="w-4 h-4" />} {String(label)}</span>
       ) : (
         <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
       )}
@@ -115,9 +119,9 @@ function ActionButton({ onClick, label, className = "", icon }) {
 function ConfirmModal({ isOpen, title, onConfirm, onCancel }) {
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 animate-in fade-in duration-300">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 animate-in fade-in duration-300 text-slate-800">
       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onCancel}></div>
-      <div className="relative w-full max-w-xs bg-white rounded-[2.5rem] shadow-2xl p-8 text-center text-slate-800">
+      <div className="relative w-full max-w-xs bg-white rounded-[2.5rem] shadow-2xl p-8 text-center">
         <div className="w-16 h-16 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-6"><Icon name="trash" className="w-8 h-8" /></div>
         <h3 className="text-sm font-black uppercase mb-2">Confirmation</h3>
         <p className="text-xs text-slate-500 mb-8 px-2 leading-relaxed">{String(title)}</p>
@@ -137,11 +141,11 @@ function GenericHistory({ title, transactions, members, currency, onDelete, onUp
   return (
     <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden text-slate-800">
       {title && <div className="p-5 border-b bg-slate-50/50 font-black uppercase text-[10px] text-slate-500"><h3>{String(title)}</h3></div>}
-      {sortedDates.length === 0 ? <div className="p-8 text-center text-slate-400 text-[10px] font-bold uppercase">Aucune donnée</div> : sortedDates.map(date => (
+      {sortedDates.length === 0 ? <div className="p-8 text-center text-slate-400 text-[10px] font-bold uppercase tracking-widest">Aucune donnée</div> : sortedDates.map(date => (
           <div key={date} className="border-b last:border-none">
             <div className="bg-slate-50/30 px-4 py-2 text-[8px] font-black text-slate-400 uppercase tracking-tighter">{String(date)}</div>
             <table className="w-full text-left text-[11px]"><tbody className="divide-y divide-slate-50">{grouped[date].map((t) => (
-                  <tr key={t.id} className="hover:bg-slate-50 text-slate-800"><td className="px-4 py-3 font-bold">{members.find((m)=>m.id===t.memberId)?.name || '...'}</td><td className={`px-4 py-3 text-right font-black ${t.amount >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{t.amount >= 0 ? '+' : ''}{formatCurrency(t.amount, currency)}</td>{!isVisionOnly && <td className="px-4 py-3 text-right space-x-1"><button onClick={() => edit(t.id, t.amount)} className="p-1 text-slate-300 hover:text-indigo-600"><Icon name="edit" className="w-4 h-4" /></button><button onClick={() => onDelete('transactions', t.id)} className="p-1 text-slate-300 hover:text-rose-500"><Icon name="trash" className="w-4 h-4" /></button></td>}</tr>
+                  <tr key={t.id} className="hover:bg-slate-50"><td className="px-4 py-3 font-bold">{members.find((m)=>m.id===t.memberId)?.name || '...'}</td><td className={`px-4 py-3 text-right font-black ${t.amount >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{t.amount >= 0 ? '+' : ''}{formatCurrency(t.amount, currency)}</td>{!isVisionOnly && <td className="px-4 py-3 text-right space-x-1"><button onClick={() => edit(t.id, t.amount)} className="p-1 text-slate-300 hover:text-indigo-600"><Icon name="edit" className="w-4 h-4" /></button><button onClick={() => onDelete('transactions', t.id)} className="p-1 text-slate-300 hover:text-rose-500"><Icon name="trash" className="w-4 h-4" /></button></td>}</tr>
             ))}</tbody></table>
           </div>
         ))}
@@ -150,90 +154,227 @@ function GenericHistory({ title, transactions, members, currency, onDelete, onUp
 }
 
 // ==========================================
-// VUES PRINCIPALES
+// COMPOSANTS FEATURES (IA & PDF)
 // ==========================================
 
-function DashboardView({ stats, members, currency, isVisionOnly, onAddMember, onAddTransaction, themeGradient, activeMeetingDate, setActiveMeetingDate, isPremium }) {
-  const [op, setOp] = useState({ mId: '', amt: '', type: 'cotisation', dir: 'in', method: 'cash' });
+function PdfOutputView({ content, currency, onExit }) {
+  if (!content) return null;
+  const handleShareText = () => {
+    let text = "";
+    if (content.type === 'report') {
+      text = `📊 *RAPPORT - ${content.date}*\n\n🏠 Hôte: ${content.host}\n💰 Bénéf: ${content.beneficiary}\n\n`;
+      content.membersList.forEach(m => { text += `👤 ${m.name} [${m.status}]\n   💵 Cotis: ${formatCurrency(m.cotis, currency)}\n   🏦 Épargne: ${formatCurrency(m.epargne, currency)}\n\n`; });
+      text += `_Tontine Pour Tous_`;
+    } else {
+      text = `📅 *CALENDRIER*\n\n`;
+      content.list.forEach(r => { text += `🗓️ ${r.date} -> ${r.beneficiary}\n`; });
+    }
+    if (navigator.share) navigator.share({ title: 'Rapport Tontine', text: text }).catch(() => {});
+    else window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+  };
+
+  return (
+    <div className="fixed inset-0 z-[999] bg-slate-50 flex flex-col items-center overflow-y-auto animate-in slide-in-from-right duration-300">
+      <div className="w-full bg-slate-900 px-4 py-4 flex justify-between items-center sticky top-0 print:hidden z-[1000] shadow-xl">
+        <button onClick={onExit} className="flex items-center gap-2 px-4 py-2 bg-white/10 rounded-xl text-white font-black text-[10px] uppercase tracking-tighter">Fermer</button>
+        <button onClick={handleShareText} className="flex items-center gap-2 px-6 py-2 bg-indigo-500 rounded-xl text-white font-black text-[10px] uppercase shadow-lg">Partager</button>
+      </div>
+      <div className="bg-white my-6 p-6 md:p-12 min-h-[297mm] w-full max-w-[210mm] print:m-0 print:shadow-none print:w-full text-slate-900 shadow-2xl rounded-sm border border-slate-200">
+        {content.type === 'report' ? (
+          <div className="space-y-8">
+            <div className="bg-slate-900 text-white p-8 rounded-3xl text-center relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/20 rounded-full -mr-16 -mt-16"></div>
+              <h1 className="text-3xl font-black uppercase tracking-tighter">Rapport de Séance</h1>
+              <p className="text-indigo-300 font-bold uppercase tracking-widest text-sm mt-2">{content.date}</p>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-indigo-50 p-4 rounded-2xl text-center"><p className="text-[8px] font-black uppercase text-indigo-400">Cotisations</p><p className="text-sm font-black text-indigo-700">{formatCurrency(content.totals.cotis, currency)}</p></div>
+              <div className="bg-emerald-50 p-4 rounded-2xl text-center"><p className="text-[8px] font-black uppercase text-emerald-400">Solde Fonds</p><p className="text-sm font-black text-emerald-700">{formatCurrency(content.totals.depotsFonds - content.totals.sortiesFonds, currency)}</p></div>
+              <div className="bg-amber-50 p-4 rounded-2xl text-center"><p className="text-[8px] font-black uppercase text-amber-400">Épargne</p><p className="text-sm font-black text-amber-700">{formatCurrency(content.totals.epargne, currency)}</p></div>
+            </div>
+            <div className="overflow-hidden rounded-2xl border border-slate-200 shadow-sm">
+              <table className="w-full text-left text-[10px] border-collapse">
+                <thead><tr className="bg-slate-900 text-white uppercase text-[8px] tracking-widest"><th className="p-4 border-r border-white/10">Membre</th><th className="p-4 border-r border-white/10 text-center">Status</th><th className="p-4 border-r border-white/10 text-right">Cotis.</th><th className="p-4 border-r border-white/10 text-right">Épargne</th><th className="p-4 border-r border-white/10 text-right">Fonds</th><th className="p-4 text-right">Prêt</th></tr></thead>
+                <tbody>{content.membersList.map((m, i) => (
+                    <tr key={i} className="border-b border-slate-100 odd:bg-slate-50/50 transition-colors">
+                      <td className="p-4 font-bold text-slate-700 uppercase">{m.name}</td>
+                      <td className="p-4 text-center"><span className={`px-2 py-1 rounded-md text-[7px] font-black ${m.status === 'PAYÉ' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>{m.status}</span></td>
+                      <td className="p-4 text-right font-black text-indigo-600">{formatCurrency(m.cotis, currency)}</td>
+                      <td className="p-4 text-right font-black text-amber-600">{formatCurrency(m.epargne, currency)}</td>
+                      <td className="p-4 text-right font-black text-emerald-600">{formatCurrency(m.depotFond - m.sortieFond, currency)}</td>
+                      <td className="p-4 text-right font-black text-rose-600">{formatCurrency(m.pretTotal, currency)}</td>
+                    </tr>
+                ))}</tbody>
+              </table>
+            </div>
+            <div className="mt-12 flex justify-center print:hidden">
+              <button onClick={() => window.print()} className="flex flex-col items-center gap-1 group">
+                <div className="w-14 h-14 bg-slate-900 text-white rounded-full flex items-center justify-center shadow-2xl transition-transform active:scale-90"><Icon name="print" className="w-7 h-7" /></div>
+                <span className="text-[8px] font-black uppercase text-slate-400">Imprimer / PDF</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-8">
+            <div className="bg-indigo-600 text-white p-8 rounded-3xl text-center"><h1 className="text-3xl font-black uppercase tracking-tighter">{content.title}</h1></div>
+            <div className="overflow-hidden rounded-2xl border border-slate-200"><table className="w-full text-left text-xs border-collapse"><thead><tr className="bg-slate-900 text-white uppercase text-[10px]"><th className="p-4 border-r border-white/10">Date</th><th className="p-4 border-r border-white/10">Bénéficiaire</th><th className="p-4">Hôte</th></tr></thead><tbody>{content.list.map((r, i) => (<tr key={i} className="border-b border-slate-100 odd:bg-slate-50"><td className="p-4 font-black text-slate-500">{r.date}</td><td className="p-4 uppercase font-bold text-emerald-600">{r.beneficiary}</td><td className="p-4 uppercase font-bold text-indigo-600">{r.host}</td></tr>))}</tbody></table></div>
+            <div className="mt-12 flex justify-center print:hidden">
+              <button onClick={() => window.print()} className="flex flex-col items-center gap-1 group">
+                <div className="w-14 h-14 bg-slate-900 text-white rounded-full flex items-center justify-center shadow-2xl transition-transform active:scale-90"><Icon name="print" className="w-7 h-7" /></div>
+                <span className="text-[8px] font-black uppercase text-slate-400">Imprimer / PDF</span>
+              </button>
+            </div>
+          </div>
+        )}
+        <div className="mt-16 pt-8 border-t border-slate-200 text-center text-[10px] font-black uppercase text-indigo-600 tracking-widest">Tontine Pour Tous</div>
+      </div>
+      <style>{`@media print {@page { size: A4; margin: 0; } body { background: white !important; margin: 0; } .print\\:hidden, button, .sticky { display: none !important; } .min-h-[297mm] { height: 100vh !important; width: 100vw !important; border: none !important; margin: 0 !important; }}`}</style>
+    </div>
+  );
+}
+
+function AiAssistant({ members, stats, activeMeetingDate, transactions, currency, onClose, profile, user }) {
+  const [query, setQuery] = useState("");
+  const [messages, setMessages] = useState([{ role: 'ai', text: "Bonjour ! Je suis votre assistant. Que souhaitez-vous savoir ?" }]);
+  const [loading, setLoading] = useState(false);
+  const scrollRef = useRef(null);
+
+  const isPro = profile?.status === 'pro';
+  const dailyLimit = isPro ? PRO_AI_LIMIT : FREE_AI_LIMIT;
+  const todayStr = new Date().toISOString().split('T')[0];
+  const usageToday = (profile?.aiUsage?.date === todayStr) ? (profile?.aiUsage?.count || 0) : 0;
+
+  useEffect(() => { scrollRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+
+  const askAI = async (e) => {
+    e.preventDefault();
+    if (!query.trim() || loading) return;
+    if (usageToday >= dailyLimit) {
+      setMessages(prev => [...prev, { role: 'ai', text: `Limite atteinte (${usageToday}/${dailyLimit}). ${!isPro ? 'Passez PRO pour 10 questions/jour.' : ''}` }]);
+      return;
+    }
+    const userText = query.trim();
+    setQuery("");
+    setMessages(prev => [...prev, { role: 'user', text: userText }]);
+    setLoading(true);
+
+    try {
+      const context = `Assistant Tontine. Séance=${activeMeetingDate}, Membres=${members.map(m=>m.name).join(',')}. Stats Séance: Cotis=${stats.cotisations}.`;
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: `Contexte : ${context}\n\nUtilisateur : ${userText}` }] }] })
+      });
+      const data = await response.json();
+      const resultText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      
+      await updateDoc(doc(db, 'artifacts', NJANGI_APP_ID, 'public', 'data', 'users', user.uid), { aiUsage: { date: todayStr, count: usageToday + 1 } });
+      setMessages(prev => [...prev, { role: 'ai', text: resultText || "Désolé, réessayez." }]);
+    } catch (err) { setMessages(prev => [...prev, { role: 'ai', text: "Erreur connexion." }]); }
+    finally { setLoading(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 animate-in fade-in duration-300 text-slate-800">
+      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={onClose}></div>
+      <div className="relative w-full max-w-lg bg-white rounded-[2.5rem] shadow-2xl flex flex-col h-[80vh] overflow-hidden">
+        <div className="p-6 bg-slate-900 text-white flex justify-between items-center shrink-0">
+          <div className="flex items-center gap-3"><div className="w-10 h-10 bg-indigo-500 rounded-2xl flex items-center justify-center shadow-lg"><Icon name="sparkles" className="w-6 h-6" /></div>
+            <div><h3 className="text-sm font-black uppercase">IA Assistant</h3><p className="text-[8px] text-indigo-300 font-bold uppercase">Usage : {usageToday}/{dailyLimit}</p></div>
+          </div>
+          <button onClick={onClose}><Icon name="close" /></button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-50/50">
+          {messages.map((m, i) => (
+            <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[85%] p-4 rounded-3xl text-xs font-medium shadow-sm ${m.role === 'user' ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-white text-slate-800 border border-slate-100 rounded-bl-none'}`}>{m.text}</div>
+            </div>
+          ))}
+          <div ref={scrollRef}></div>
+        </div>
+        <form onSubmit={askAI} className="p-4 bg-white border-t border-slate-100 flex gap-3 shrink-0"><input type="text" value={query} onChange={e => setQuery(e.target.value)} placeholder="Question..." className="flex-1 p-4 bg-slate-100 border-none rounded-2xl text-xs font-bold outline-none text-slate-800" /><button type="submit" disabled={loading} className="p-4 bg-slate-900 text-white rounded-2xl shadow-lg active:scale-90 transition-all"><Icon name="send" /></button></form>
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
+// VUES SECONDAIRES
+// ==========================================
+
+function DashboardView({ stats, members, currency, isVisionOnly, onAddMember, onAddTransaction, themeGradient, activeMeetingDate, setActiveMeetingDate, isPremium, onOpenAI }) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [nameInput, setNameInput] = useState('');
   const [phoneInput, setPhoneInput] = useState('');
   const [isConfirming, setIsConfirming] = useState(false);
-
-  // Vérification de la limite de membres
+  const [op, setOp] = useState({ mId: '', amt: '', type: 'cotisation', dir: 'in', method: 'cash' });
   const isLimitReached = !isPremium && members.length >= FREE_MEMBER_LIMIT;
 
   return (
-    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-6 duration-500 text-slate-800">
+    <div className="space-y-4 animate-in fade-in duration-500 text-slate-800">
+      {!isVisionOnly && (
+        <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg ${isLimitReached ? 'bg-slate-400' : `bg-gradient-to-br ${themeGradient}`}`}><Icon name="plus" /></div>
+            <div><h3 className="text-sm font-black uppercase tracking-tight">Membres</h3><p className="text-[9px] text-slate-400 font-bold uppercase">{members.length} / {isPremium ? '∞' : FREE_MEMBER_LIMIT}</p></div>
+          </div>
+          <ActionButton onClick={() => setShowAddModal(true)} label={isLimitReached ? "Limite Atteinte" : "Inscrire Membre"} className={`px-6 py-3 rounded-2xl font-black text-[10px] uppercase shadow-lg ${isLimitReached ? 'bg-slate-100 text-slate-400' : 'bg-slate-900 text-white'}`} icon={isLimitReached ? "lock" : "plus"} />
+        </div>
+      )}
       <div className="bg-white p-6 rounded-[2rem] border-2 border-indigo-100 shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
-        <div className="flex items-center gap-4 text-slate-800">
+        <div className="flex items-center gap-4">
           <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg"><Icon name="calendar" /></div>
-          <div><h2 className="text-sm font-black uppercase">Séance Active</h2><p className="text-[10px] text-slate-400 font-medium">Sélectionnez la séance pour filtrer les saisies.</p></div>
+          <div><h2 className="text-sm font-black uppercase tracking-tight">Séance Active</h2><p className="text-[10px] text-slate-400 font-medium tracking-tight">Sélectionnez la séance actuelle.</p></div>
         </div>
         <div className="relative w-full md:w-auto">
           <input type="date" value={activeMeetingDate || ""} onChange={(e) => setActiveMeetingDate(e.target.value)} className="w-full md:w-64 p-4 bg-slate-50 border-none rounded-2xl font-black text-sm outline-none text-indigo-600 shadow-inner" />
-          
-          {!activeMeetingDate && (
-            <div className="absolute left-1/2 -translate-x-1/2 md:left-auto md:right-4 top-full mt-4 flex flex-col items-center gap-2 animate-bounce pointer-events-none">
-              <Icon name="arrowUp" className="w-8 h-8 text-indigo-600" />
-              <h3 className="text-[10px] font-black uppercase text-indigo-600 whitespace-nowrap bg-indigo-50 px-4 py-2 rounded-full border border-indigo-100 shadow-sm">Choisissez une date pour commencer</h3>
-            </div>
-          )}
+          {!activeMeetingDate && <div className="absolute left-1/2 -translate-x-1/2 md:left-auto md:right-4 top-full mt-4 flex flex-col items-center gap-2 animate-bounce pointer-events-none z-[50]"><Icon name="arrowUp" className="w-8 h-8 text-indigo-600" /><h3 className="text-[10px] font-black uppercase text-indigo-600 bg-indigo-50 px-4 py-2 rounded-full border border-indigo-100 shadow-sm whitespace-nowrap tracking-tighter">Choisissez une date</h3></div>}
         </div>
       </div>
-
       {activeMeetingDate && (
-        <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-slate-800">
-              {!isVisionOnly && (
-                <div 
-                  onClick={() => { if (!isLimitReached) { setShowAddModal(true); setIsConfirming(false); } }} 
-                  className={`cursor-pointer p-6 rounded-[2rem] shadow-xl text-white relative overflow-hidden group border-4 border-white/20 active:scale-95 transition-all ${isLimitReached ? 'bg-slate-400 cursor-not-allowed opacity-70' : `bg-gradient-to-br ${themeGradient}`}`}
-                >
-                  <h3 className="text-base font-black">{isLimitReached ? "Limite Atteinte" : "Inscrire Membre"}</h3>
-                  <p className="text-[8px] font-bold opacity-80 uppercase">{isLimitReached ? "Passez en mode PRO" : `${members.length}/${isPremium ? '∞' : FREE_MEMBER_LIMIT} membres`}</p>
-                  <div className="absolute -bottom-2 -right-2 opacity-20 group-hover:scale-110 transition-transform">
-                    <Icon name={isLimitReached ? "lock" : "plus"} className="w-16 h-16" />
-                  </div>
-                </div>
-              )}
-              <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex flex-col justify-between"><p className="text-[10px] font-black uppercase text-slate-400">Cotisations séance</p><h3 className="text-lg font-black text-indigo-600 truncate">{formatCurrency(stats?.cotisations || 0, currency)}</h3></div>
-              <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex flex-col justify-between"><p className="text-[10px] font-black uppercase text-emerald-600">Fond de caisse (Net)</p><h3 className="text-lg font-black text-emerald-600 truncate">{formatCurrency(stats?.fonds || 0, currency)}</h3></div>
-              <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex flex-col justify-between"><p className="text-[10px] font-black uppercase text-sky-600">Épargne séance</p><h3 className="text-lg font-black text-sky-600 truncate">{formatCurrency(stats?.epargne || 0, currency)}</h3></div>
-          </div>
-
-          {!isVisionOnly && (
-            <div className="bg-white p-6 lg:p-10 rounded-[2rem] border border-slate-100 shadow-sm text-slate-800">
-              <h3 className="text-[11px] font-black uppercase mb-6 flex items-center gap-3"><div className="w-1 h-4 bg-indigo-600 rounded-full" /> Saisir mouvement ({String(activeMeetingDate)})</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-slate-800">
-                  <select value={op.mId} onChange={(e)=>setOp({...op, mId:e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-xs outline-none text-slate-800"><option value="">Choisir Membre...</option>{members.map((m)=><option key={m.id} value={String(m.id)}>{String(m.name)}</option>)}</select>
-                  <select value={op.type} onChange={(e)=>setOp({...op, type:e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-xs outline-none text-slate-800"><option value="cotisation">Cotisation</option><option value="epargne">Épargne</option><option value="fonds">Fond de caisse</option></select>
-                  <select value={op.method} onChange={(e)=>setOp({...op, method:e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-xs outline-none text-slate-800"><option value="cash">Espèces</option><option value="momo">Momo</option></select>
-                  <div className="md:col-span-2 lg:col-span-3 flex bg-slate-100 rounded-2xl p-1 text-slate-800">
-                    <button onClick={()=>setOp({...op,dir:'in'})} className={`flex-1 py-3 rounded-xl text-[9px] font-black uppercase ${op.dir==='in'?'bg-white shadow text-indigo-600':'text-slate-400'}`}>Entrée / Dépôt</button>
-                    <button onClick={()=>setOp({...op,dir:'out'})} className={`flex-1 py-3 rounded-xl text-[9px] font-black uppercase ${op.dir==='out'?'bg-white shadow text-rose-600':'text-slate-400'}`}>Sortie / Retrait</button>
-                  </div>
-                  <input type="number" value={op.amt} onChange={(e)=>setOp({...op,amt:e.target.value})} className="md:col-span-2 lg:col-span-3 p-4 bg-slate-50 rounded-2xl font-black text-2xl text-center outline-none border border-slate-100 shadow-inner text-slate-800" placeholder="0.00" />
-                  <ActionButton onClick={async () => { if(!op.mId||!op.amt) return; await onAddTransaction(op.mId,op.dir==='in'?Number(op.amt):-Number(op.amt),op.type, op.method); setOp({...op,amt:''}); }} label="Valider" className="md:col-span-2 lg:col-span-3 bg-slate-900 text-white p-5 rounded-3xl font-black text-xs uppercase shadow-xl" />
-              </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div onClick={onOpenAI} className="cursor-pointer p-6 rounded-[2rem] shadow-xl bg-slate-900 text-white relative overflow-hidden group border-4 border-white/20 active:scale-95 transition-all">
+              <h3 className="text-base font-black uppercase tracking-tighter">Assistant IA</h3><p className="text-[8px] font-bold opacity-80 uppercase tracking-widest">Questions & Bilans</p>
+              <div className="absolute -bottom-2 -right-2 opacity-20 group-hover:scale-110 transition-transform"><Icon name="sparkles" className="w-16 h-16" /></div>
             </div>
-          )}
-        </>
+            <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex flex-col justify-between"><p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Cotisations séance</p><h3 className="text-lg font-black text-indigo-600 truncate">{formatCurrency(stats?.cotisations || 0, currency)}</h3></div>
+            <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex flex-col justify-between"><p className="text-[10px] font-black uppercase text-emerald-600 tracking-widest">Fond de caisse</p><h3 className="text-lg font-black text-emerald-600 truncate">{formatCurrency(stats?.fonds || 0, currency)}</h3></div>
+        </div>
       )}
-
+      {activeMeetingDate && !isVisionOnly && (
+        <div className="bg-white p-6 lg:p-10 rounded-[2rem] border border-slate-100 shadow-sm">
+          <h3 className="text-[11px] font-black uppercase mb-6 tracking-tighter flex items-center gap-3"><div className="w-1 h-4 bg-indigo-600 rounded-full" /> Saisir mouvement ({activeMeetingDate})</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <select value={op.mId} onChange={(e)=>setOp({...op, mId:e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-xs outline-none text-slate-800 shadow-inner"><option value="">Choisir Membre...</option>{members.map((m)=><option key={m.id} value={String(m.id)}>{String(m.name)}</option>)}</select>
+              <select value={op.type} onChange={(e)=>setOp({...op, type:e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-xs outline-none text-slate-800 shadow-inner"><option value="cotisation">Cotisation</option><option value="epargne">Épargne</option><option value="fonds">Fond de caisse</option></select>
+              <select value={op.method} onChange={(e)=>setOp({...op, method:e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-xs outline-none text-slate-800 shadow-inner"><option value="cash">Espèces</option><option value="momo">Momo</option></select>
+              <div className="md:col-span-2 lg:col-span-3 flex bg-slate-100 rounded-2xl p-1">
+                <button onClick={()=>setOp({...op,dir:'in'})} className={`flex-1 py-3 rounded-xl text-[9px] font-black uppercase ${op.dir==='in'?'bg-white shadow text-indigo-600':'text-slate-400'}`}>Entrée</button>
+                <button onClick={()=>setOp({...op,dir:'out'})} className={`flex-1 py-3 rounded-xl text-[9px] font-black uppercase ${op.dir==='out'?'bg-white shadow text-rose-600':'text-slate-400'}`}>Sortie</button>
+              </div>
+              <input type="number" value={op.amt} onChange={(e)=>setOp({...op,amt:e.target.value})} className="md:col-span-2 lg:col-span-3 p-4 bg-slate-50 rounded-2xl font-black text-2xl text-center outline-none border border-slate-100 text-slate-800 shadow-inner" placeholder="0.00" />
+              <ActionButton onClick={async () => { if(!op.mId||!op.amt) return; await onAddTransaction(op.mId,op.dir==='in'?Number(op.amt):-Number(op.amt),op.type, op.method); setOp({...op,amt:''}); }} label="Valider" className="md:col-span-2 lg:col-span-3 bg-slate-900 text-white p-5 rounded-3xl font-black text-xs uppercase shadow-xl" />
+          </div>
+        </div>
+      )}
       {showAddModal && (
         <div className="fixed inset-0 z-[300] flex items-center justify-center p-6 text-slate-800"><div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={() => setShowAddModal(false)}></div>
-            <div className="relative w-full max-w-sm bg-white rounded-[2.5rem] p-8 shadow-2xl text-slate-800">
-               <h2 className="text-xl font-black uppercase mb-6">{isConfirming ? "Confirmation" : "Nouveau Membre"}</h2>
-               {!isConfirming ? (
-                 <div className="space-y-4 text-slate-800">
-                    <input type="text" placeholder="Nom complet..." value={nameInput} onChange={e=>setNameInput(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold outline-none text-slate-800" />
-                    <input type="text" placeholder="Téléphone (ex: 00237...)" value={phoneInput} onChange={e=>setPhoneInput(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold outline-none text-slate-800" />
-                    <div className="flex gap-3 text-slate-800"><button onClick={() => setShowAddModal(false)} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black text-[10px] uppercase">Annuler</button>
-                    <button onClick={() => { if(nameInput.trim()) setIsConfirming(true); }} className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase">Enregistrer</button></div></div>
+            <div className="relative w-full max-w-sm bg-white rounded-[2.5rem] p-8 shadow-2xl">
+               <h2 className="text-xl font-black uppercase mb-6 tracking-tighter">{isConfirming ? "Confirmation" : "Nouveau Membre"}</h2>
+               {isLimitReached ? (
+                 <div className="text-center p-6 space-y-4">
+                   <div className="w-16 h-16 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mx-auto"><Icon name="lock" className="w-8 h-8" /></div>
+                   <p className="text-xs text-slate-500 font-medium">Limite atteinte (10 membres). Passez en mode PRO pour en ajouter davantage.</p>
+                   <button onClick={() => setShowAddModal(false)} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase">Compris</button>
+                 </div>
+               ) : !isConfirming ? (
+                 <div className="space-y-4">
+                    <input type="text" placeholder="Nom complet..." value={nameInput} onChange={e=>setNameInput(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold outline-none text-slate-800 shadow-inner" />
+                    <input type="text" placeholder="Téléphone..." value={phoneInput} onChange={e=>setPhoneInput(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold outline-none text-slate-800 shadow-inner" />
+                    <div className="flex gap-3"><button onClick={() => setShowAddModal(false)} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black text-[10px] uppercase tracking-tighter">Annuler</button><button onClick={() => { if(nameInput.trim()) setIsConfirming(true); }} className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-tighter shadow-lg">Enregistrer</button></div></div>
                ) : (
-                 <div className="space-y-4 text-slate-800"><p className="text-xs text-slate-500">Ajouter <strong className="text-indigo-600">{String(nameInput)}</strong> ?</p>
-                    <div className="flex gap-3 text-slate-800"><button onClick={() => setIsConfirming(false)} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black text-[10px] uppercase">Retour</button>
+                 <div className="space-y-4"><p className="text-xs text-slate-500">Inscrire <strong className="text-indigo-600 uppercase">{String(nameInput)}</strong> ?</p>
+                    <div className="flex gap-3"><button onClick={() => setIsConfirming(false)} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black text-[10px] uppercase tracking-tighter">Retour</button>
                     <ActionButton onClick={async () => { try { await onAddMember(nameInput.trim(), phoneInput.trim()); setNameInput(''); setPhoneInput(''); setIsConfirming(false); setShowAddModal(false); } catch (e) { console.error(e); } }} label="Confirmer" className="flex-1 bg-emerald-600 text-white rounded-2xl font-black text-[10px] uppercase shadow-lg" /></div></div>
                )}
             </div>
@@ -248,11 +389,11 @@ function FinancesView({ transactions, allTransactions, members, currency, onDele
   const displayTrans = showHistory ? allTransactions : transactions;
   return (
     <div className="space-y-8 animate-in fade-in duration-500 text-slate-800">
-      <div className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm text-slate-800">
-        <h2 className="text-xs font-black uppercase text-slate-500">{showHistory ? "Historique complet" : `Données du ${String(activeMeetingDate || '?')}`}</h2>
-        <button onClick={() => setShowHistory(!showHistory)} className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase transition-all ${showHistory ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'}`}>{showHistory ? "Vue séance" : "Voir tout"}</button>
+      <div className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm">
+        <h2 className="text-xs font-black uppercase text-slate-500 tracking-tight">{showHistory ? "Historique" : `Séance ${activeMeetingDate || '?'}`}</h2>
+        <button onClick={() => setShowHistory(!showHistory)} className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase ${showHistory ? 'bg-indigo-600 text-white shadow-lg' : 'bg-slate-100 text-slate-500'}`}>{showHistory ? "Vue séance" : "Voir tout"}</button>
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 text-slate-800">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <GenericHistory title="Cotisations" transactions={displayTrans.filter(t => t.type === 'cotisation')} members={members} currency={currency} onDelete={onDelete} onUpdate={onUpdate} isVisionOnly={isVisionOnly} />
         <GenericHistory title="Épargne" transactions={displayTrans.filter(t => t.type === 'epargne')} members={members} currency={currency} onDelete={onDelete} onUpdate={onUpdate} isVisionOnly={isVisionOnly} />
       </div>
@@ -260,10 +401,8 @@ function FinancesView({ transactions, allTransactions, members, currency, onDele
   );
 }
 
-function ReportsView({ members, transactions, rotations, loans, currency, themeGradient, defaultDate }) {
+function ReportsView({ members, transactions, rotations, loans, currency, themeGradient, defaultDate, onRedirectToPdf }) {
   const [reportDate, setReportDate] = useState(defaultDate || new Date().toISOString().split('T')[0]);
-  const [showPreview, setShowPreview] = useState(false);
-
   useEffect(() => { if (defaultDate) setReportDate(defaultDate); }, [defaultDate]);
 
   const sessionData = useMemo(() => {
@@ -271,22 +410,17 @@ function ReportsView({ members, transactions, rotations, loans, currency, themeG
     const trans = (transactions || []).filter((t) => String(t.date) === d && t.status === 'completed');
     const rot = (rotations || []).find((r) => String(r.date) === d);
     const sLoans = (loans || []).filter((l) => String(l.startDate) === d);
-    const generationTime = new Date().toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' });
-    
     return {
-      date: d,
-      generationTime,
-      beneficiary: members.find((m) => m.id === rot?.beneficiaryMemberId)?.name || 'Non défini',
+      type: 'report', date: d, beneficiary: members.find((m) => m.id === rot?.beneficiaryMemberId)?.name || 'Non défini',
       host: members.find((m) => m.id === rot?.hostMemberId)?.name || 'Non défini',
       membersList: (members || []).map((m) => {
         const mTrans = trans.filter((t) => t.memberId === m.id);
         const mLoan = sLoans.find((l) => l.memberId === m.id);
         const cotis = mTrans.filter((t) => t.type === 'cotisation').reduce((s, t) => s + t.amount, 0);
-        const fondsTrans = mTrans.filter((t) => t.type === 'fonds');
-        const depotFond = fondsTrans.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0);
-        const sortieFond = Math.abs(fondsTrans.filter(t => t.amount < 0).reduce((s, t) => s + t.amount, 0));
-        let statusBadge = cotis > 0 ? "payé" : "non payé";
-        return { name: m.name, cotis, epargne: mTrans.filter((t) => t.type === 'epargne').reduce((s, t) => s + t.amount, 0), depotFond, sortieFond, pretTotal: mLoan?.totalAmount || 0, statusBadge };
+        return { name: m.name, cotis, epargne: mTrans.filter((t) => t.type === 'epargne').reduce((s, t) => s + t.amount, 0), 
+          depotFond: mTrans.filter((t) => t.type === 'fonds' && t.amount > 0).reduce((s, t) => s + t.amount, 0), 
+          sortieFond: Math.abs(mTrans.filter((t) => t.type === 'fonds' && t.amount < 0).reduce((s, t) => s + t.amount, 0)), 
+          pretTotal: mLoan?.totalAmount || 0, status: cotis > 0 ? 'PAYÉ' : 'NON PAYÉ' };
       }),
       totals: {
         cotis: trans.filter((t) => t.type === 'cotisation').reduce((s, t) => s + t.amount, 0),
@@ -298,148 +432,47 @@ function ReportsView({ members, transactions, rotations, loans, currency, themeG
     };
   }, [reportDate, transactions, rotations, loans, members]);
 
-  const shareWhatsApp = () => {
-    const text = `📊 *RAPPORT DE TONTINE - ${sessionData.date}*\n\n🏠 Hôte: ${sessionData.host}\n💰 Bénéficiaire: ${sessionData.beneficiary}\n\n💵 *Cotisations:* ${formatCurrency(sessionData.totals.cotis, currency)}\n🏦 *Total Épargne:* ${formatCurrency(sessionData.totals.epargne, currency)}\n\n_Veuillez imprimer le PDF puis le joindre sur WhatsApp pour le détail complet._\n_Généré via Tontine Pour Tous_`;
-    window.open(`https://wa.me/${WHATSAPP_SUPPORT}?text=${encodeURIComponent(text)}`, '_blank');
-  };
-
   return (
     <div className="space-y-6 text-slate-800">
-      <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm text-slate-800">
-          <h2 className="text-xl font-black uppercase mb-6">Générer un rapport</h2>
-          <div className="flex flex-col sm:flex-row gap-4">
-             <input type="date" value={reportDate || ""} onChange={e=>setReportDate(e.target.value)} className="flex-1 p-4 bg-slate-50 border border-slate-100 rounded-2xl font-black text-sm outline-none text-indigo-600 shadow-inner" />
-             <button onClick={() => setShowPreview(true)} className={`px-8 py-4 bg-gradient-to-br ${themeGradient} text-white rounded-2xl font-black text-[10px] uppercase shadow-lg shadow-indigo-100 transition-all active:scale-95`}>Voir le rapport</button>
+      <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center justify-between">
+          <div><h2 className="text-xl font-black uppercase tracking-tighter">Éditer Rapport</h2><p className="text-[10px] text-slate-400 font-bold uppercase">Bilan de séance complet</p></div>
+          <div className="flex items-center gap-4">
+              <input type="date" value={reportDate} onChange={e=>setReportDate(e.target.value)} className="p-4 bg-slate-50 border-none rounded-2xl font-black outline-none text-indigo-600 shadow-inner" />
+              <button onClick={() => onRedirectToPdf(sessionData)} className="p-4 bg-slate-900 text-white rounded-2xl shadow-lg transition-all active:scale-90"><Icon name="print" /></button>
           </div>
       </div>
-
-      {showPreview && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 print:p-0">
-           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md print:hidden" onClick={()=>setShowPreview(false)}></div>
-           <div className="relative w-full max-w-6xl bg-white rounded-[3rem] print:rounded-none shadow-2xl p-6 lg:p-10 max-h-[90vh] overflow-y-auto print:max-h-none print:overflow-visible text-slate-800">
-              
-              <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8 border-b border-slate-100 pb-8 print:hidden text-slate-800">
-                 <div className="text-center md:text-left text-slate-800">
-                    <h1 className="text-2xl font-black uppercase tracking-tighter text-slate-800">Rapport de Séance</h1>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{String(sessionData.date)}</p>
-                 </div>
-                 <div className="flex gap-3 text-slate-800">
-                    <button onClick={shareWhatsApp} className="flex items-center justify-center gap-2 px-6 py-3 bg-emerald-500 text-white rounded-2xl font-black text-[10px] uppercase shadow-lg active:scale-95 transition-all">WhatsApp</button>
-                    <button onClick={()=>window.print()} className="flex items-center justify-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase shadow-lg active:scale-95 transition-all">Imprimer PDF</button>
-                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 mb-8 text-center text-slate-800">
-                 <div className="bg-emerald-50 p-6 rounded-3xl print:bg-emerald-50 print:border print:border-emerald-100"><p className="text-[10px] font-black uppercase text-emerald-400 mb-1">Bénéficiaire</p><p className="text-base lg:text-xl font-black text-emerald-600">{String(sessionData.beneficiary)}</p></div>
-                 <div className="bg-indigo-50 p-6 rounded-3xl print:bg-indigo-50 print:border print:border-indigo-100"><p className="text-[10px] font-black uppercase text-indigo-400 mb-1">Hôte</p><p className="text-base lg:text-xl font-black text-indigo-600">{String(sessionData.host)}</p></div>
-              </div>
-
-              <div className="overflow-x-auto mb-10 border border-slate-100 rounded-3xl text-slate-800">
-                 <table className="w-full text-left text-[11px] text-slate-800">
-                   <thead>
-                     <tr className="bg-slate-50 text-[9px] font-black uppercase text-slate-400 print:bg-slate-100">
-                       <th className="px-4 py-5">Membre</th>
-                       <th className="px-4 py-5">Statut</th>
-                       <th className="px-4 py-5 text-indigo-600">Cotisation</th>
-                       <th className="px-4 py-5 text-sky-600">Épargne</th>
-                       <th className="px-4 py-5 text-rose-500">Prêt (Dû)</th>
-                       <th className="px-4 py-5 text-emerald-600">Entrée Fond</th>
-                       <th className="px-4 py-5 text-rose-600">Sortie Fond</th>
-                     </tr>
-                   </thead>
-                   <tbody className="divide-y divide-slate-100 text-slate-800">
-                     {sessionData.membersList.map((m, i) => (
-                       <tr key={i} className="hover:bg-slate-50/50 transition-colors text-slate-800 print:bg-white">
-                         <td className="px-4 py-4 font-bold">{String(m.name)}</td>
-                         <td className="px-4 py-4">
-                            <span className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase print:border ${m.statusBadge === 'payé' ? 'bg-emerald-100 text-emerald-600 border-emerald-200' : 'bg-rose-100 text-rose-500 border-rose-200'}`}>{String(m.statusBadge)}</span>
-                         </td>
-                         <td className="px-4 py-4 font-black">{formatCurrency(m.cotis, currency)}</td>
-                         <td className="px-4 py-4 font-black text-sky-600">{formatCurrency(m.epargne, currency)}</td>
-                         <td className="px-4 py-4 font-black text-rose-500">{formatCurrency(m.pretTotal, currency)}</td>
-                         <td className="px-4 py-4 font-black text-emerald-600">{formatCurrency(m.depotFond, currency)}</td>
-                         <td className="px-4 py-4 font-black text-rose-600">{formatCurrency(m.sortieFond, currency)}</td>
-                       </tr>
-                     ))}
-                   </tbody>
-                   <tfoot className="bg-slate-900 text-white font-black print:bg-slate-900 print:text-white">
-                     <tr className="text-white">
-                       <td colSpan="2" className="px-4 py-5 uppercase tracking-widest text-[10px]">TOTAL SÉANCE</td>
-                       <td className="px-4 py-5">{formatCurrency(sessionData.totals.cotis, currency)}</td>
-                       <td className="px-4 py-5">{formatCurrency(sessionData.totals.epargne, currency)}</td>
-                       <td className="px-4 py-5 text-rose-400">{formatCurrency(sessionData.totals.pretsTotal, currency)}</td>
-                       <td className="px-4 py-5 text-emerald-400">{formatCurrency(sessionData.totals.depotsFonds, currency)}</td>
-                       <td className="px-4 py-5 text-rose-400">{formatCurrency(sessionData.totals.sortiesFonds, currency)}</td>
-                     </tr>
-                   </tfoot>
-                 </table>
-              </div>
-           </div>
-        </div>
-      )}
-      
-      <style>{`
-        @media print {
-          body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-          .print\\:hidden { display: none !important; }
-        }
-      `}</style>
     </div>
   );
 }
 
-function RotationsView({ members, rotations, activeMeetingDate, onAddRotation, onDelete, isVisionOnly }) {
+function RotationsView({ members, rotations, activeMeetingDate, onAddRotation, onDelete, isVisionOnly, themeGradient, onRedirectToPdf }) {
   const [beneficiary, setBeneficiary] = useState("");
   const [host, setHost] = useState("");
   const [customDate, setCustomDate] = useState("");
   const sortedRotations = useMemo(() => [...rotations].sort((a, b) => new Date(a.date) - new Date(b.date)), [rotations]);
+  const rotationData = useMemo(() => ({
+    type: 'rotations', title: 'Calendrier des Rotations',
+    list: sortedRotations.map(r => ({ date: r.date, beneficiary: members.find(m => m.id === r.beneficiaryMemberId)?.name || '...', host: members.find(m => m.id === r.hostMemberId)?.name || '...' }))
+  }), [sortedRotations, members]);
 
   return (
     <div className="space-y-6 text-slate-800">
       {!isVisionOnly && (
-        <div className="bg-white p-6 lg:p-8 rounded-[2rem] border border-slate-100 shadow-sm animate-in zoom-in-95 text-slate-800">
-           <h2 className="text-sm font-black uppercase text-slate-700 mb-6 tracking-widest flex items-center gap-2"><Icon name="calendar" className="w-4 h-4 text-indigo-600" /> Programmer séance</h2>
-           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 text-slate-800">
-              <input type="date" value={customDate} onChange={(e) => setCustomDate(e.target.value)} className="p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-xs outline-none text-indigo-600" />
-              <select value={beneficiary} onChange={(e) => setBeneficiary(e.target.value)} className="p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-xs outline-none text-slate-800"><option value="">Bénéficiaire...</option>{members.map(m => <option key={m.id} value={m.id}>{String(m.name)}</option>)}</select>
-              <select value={host} onChange={(e) => setHost(e.target.value)} className="p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-xs outline-none text-slate-800"><option value="">Hôte...</option>{members.map(m => <option key={m.id} value={m.id}>{String(m.name)}</option>)}</select>
+        <div className="bg-white p-6 lg:p-8 rounded-[2rem] border border-slate-100 shadow-sm">
+           <div className="flex justify-between items-center mb-6"><h2 className="text-sm font-black uppercase tracking-widest text-slate-700">Calendrier</h2><button onClick={() => onRedirectToPdf(rotationData)} className="p-2 text-slate-400 hover:text-slate-900 transition-colors"><Icon name="print" /></button></div>
+           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <input type="date" value={customDate} onChange={(e) => setCustomDate(e.target.value)} className="p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold outline-none text-indigo-600 shadow-inner" />
+              <select value={beneficiary} onChange={(e) => setBeneficiary(e.target.value)} className="p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold outline-none"><option value="">Bénéficiaire...</option>{members.map(m => <option key={m.id} value={m.id}>{String(m.name)}</option>)}</select>
+              <select value={host} onChange={(e) => setHost(e.target.value)} className="p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold outline-none"><option value="">Hôte...</option>{members.map(m => <option key={m.id} value={m.id}>{String(m.name)}</option>)}</select>
            </div>
-           <ActionButton onClick={async () => { if(!beneficiary || !host || !customDate) return; await onAddRotation(beneficiary, host, customDate); setBeneficiary(""); setHost(""); setCustomDate(""); }} label="Ajouter au calendrier" className="w-full bg-indigo-600 text-white p-5 rounded-3xl font-black text-[10px] uppercase shadow-xl" />
+           <ActionButton onClick={async () => { if(!beneficiary || !host || !customDate) return; await onAddRotation(beneficiary, host, customDate); setBeneficiary(""); setHost(""); setCustomDate(""); }} label="Valider au calendrier" className="w-full bg-indigo-600 text-white p-5 rounded-3xl font-black uppercase shadow-xl" />
         </div>
       )}
-      <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden text-slate-800">
-        <div className="p-5 flex justify-between items-center border-b border-slate-50">
-          <h3 className="text-[10px] font-black uppercase text-slate-400">Calendrier des Rotations</h3>
-          <button onClick={() => window.print()} className="p-2 bg-slate-50 rounded-xl text-slate-400 hover:text-indigo-600 transition-colors"><Icon name="print" className="w-4 h-4" /></button>
-        </div>
-        <table className="w-full table-fixed text-left text-[11px] text-slate-800">
-          <thead className="bg-slate-50/50">
-            <tr className="text-[9px] font-black uppercase text-slate-400">
-              <th className="px-4 py-3 w-1/4">Date</th>
-              <th className="px-4 py-3 w-1/3">Bénéficiaire</th>
-              <th className="px-4 py-3 w-1/3">Hôte</th>
-              {!isVisionOnly && <th className="px-4 py-3 w-12 text-right"></th>}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-50 text-slate-800">
-            {sortedRotations.map(rot => (
-              <tr key={rot.id} className={`hover:bg-slate-50 text-slate-800 ${rot.date === activeMeetingDate ? 'bg-indigo-50/30' : ''}`}>
-                <td className="px-4 py-4 font-bold text-slate-600 truncate">{String(rot.date)}</td>
-                <td className="px-4 py-4 font-black text-emerald-600 uppercase truncate">
-                  {members.find(m => m.id === rot.beneficiaryMemberId)?.name || '...'}
-                </td>
-                <td className="px-4 py-4 font-black text-indigo-600 uppercase truncate">
-                  {members.find(m => m.id === rot.hostMemberId)?.name || '...'}
-                </td>
-                {!isVisionOnly && (
-                  <td className="px-4 py-4 text-right">
-                    <button onClick={() => onDelete('rotations', rot.id)} className="p-2 text-slate-300 hover:text-rose-500">
-                      <Icon name="trash" className="w-4 h-4" />
-                    </button>
-                  </td>
-                )}
-              </tr>
-            ))}
+      <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
+        <table className="w-full table-fixed text-[11px] text-slate-800">
+          <thead><tr className="bg-slate-50 font-black uppercase text-slate-400 tracking-tighter"><th className="p-4 text-left">Date</th><th className="p-4 text-left">Bénéficiaire</th><th className="p-4 text-left">Hôte</th>{!isVisionOnly && <th className="p-4 w-12"></th>}</tr></thead>
+          <tbody className="divide-y divide-slate-50">
+            {sortedRotations.map(rot => (<tr key={rot.id} className="hover:bg-slate-50"><td className="p-4 font-bold text-slate-600">{rot.date}</td><td className="p-4 uppercase font-black text-emerald-600">{members.find(m => m.id === rot.beneficiaryMemberId)?.name || '...'}</td><td className="p-4 uppercase font-black text-indigo-600">{members.find(m => m.id === rot.hostMemberId)?.name || '...'}</td>{!isVisionOnly && <td className="p-4"><button onClick={()=>onDelete('rotations', rot.id)} className="text-slate-300 hover:text-rose-500 transition-colors"><Icon name="trash" /></button></td>}</tr>))}
           </tbody>
         </table>
       </div>
@@ -447,95 +480,45 @@ function RotationsView({ members, rotations, activeMeetingDate, onAddRotation, o
   );
 }
 
-function MembersView({ members, activeMeetingDate, transactions, loans, rotations, currency, onDelete, isVisionOnly, onUpdate }) {
+function MembersView({ members, activeMeetingDate, transactions, loans, onDelete, isVisionOnly, onUpdate, currency }) {
   const [selectedMember, setSelectedMember] = useState(null);
-  
-  const editMember = (id, cn, cp) => { 
-    const n = prompt("Nouveau nom :", cn); 
-    const p = prompt("Nouveau téléphone :", cp || "");
-    if (n && n.trim()) onUpdate(id, n.trim(), p ? p.trim() : ""); 
-  };
-
-  const handleSendMessage = (m) => {
-    if (!m.phone) {
-        alert("Ce membre n'a pas de numéro de téléphone enregistré.");
-        return;
-    }
-    const cleanPhone = m.phone.replace(/[^0-9]/g, '');
-    const mId = m.id;
-    const mTrans = transactions.filter(t => t.memberId === mId && t.date === activeMeetingDate && t.status === 'completed');
-    const hasPaid = mTrans.some(t => t.type === 'cotisation' && t.amount > 0);
-    
-    let message = "";
-    if (activeMeetingDate && !hasPaid) {
-        message = `Bonjour ${m.name}, j'espère que tu vas bien. C'est un petit rappel poli concernant ta cotisation pour la séance du ${activeMeetingDate}. Merci d'avance !`;
-    } else if (activeMeetingDate) {
-        message = `Bonjour ${m.name}, c'est un rappel pour notre prochaine réunion de tontine prévue le ${activeMeetingDate}. On compte sur ta présence !`;
-    } else {
-        message = `Bonjour ${m.name}, j'espère que tu vas bien. C'est un petit message de la tontine pour te souhaiter une excellente journée.`;
-    }
-
-    window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, '_blank');
-  };
-
+  const editMember = (id, cn, cp) => { const n = prompt("Nom :", cn); const p = prompt("Tél :", cp || ""); if (n && n.trim()) onUpdate(id, n.trim(), p ? p.trim() : ""); };
   const memberReport = useMemo(() => {
     if (!selectedMember || !activeMeetingDate) return null;
     const mId = selectedMember.id;
     const mTrans = transactions.filter(t => t.memberId === mId && t.date === activeMeetingDate && t.status === 'completed');
-    const mLoan = loans.find(l => l.memberId === mId && l.startDate === activeMeetingDate);
-    return {
-      name: selectedMember.name,
-      cotis: mTrans.filter(t => t.type === 'cotisation').reduce((s, t) => s + t.amount, 0),
-      epargne: mTrans.filter(t => t.type === 'epargne').reduce((s, t) => s + t.amount, 0),
-      fonds: mTrans.filter(t => t.type === 'fonds').reduce((s, t) => s + t.amount, 0),
-      loan: mLoan?.totalAmount || 0,
-    };
+    const mLoans = (loans || []).filter(l => l.memberId === mId && l.startDate === activeMeetingDate);
+    return { name: selectedMember.name, cotis: mTrans.filter(t => t.type === 'cotisation').reduce((s, t) => s + t.amount, 0), epargne: mTrans.filter(t => t.type === 'epargne').reduce((s, t) => s + t.amount, 0), fonds: mTrans.filter(t => t.type === 'fonds').reduce((s, t) => s + t.amount, 0), loan: mLoans.reduce((s, l) => s + l.totalAmount, 0) };
   }, [selectedMember, activeMeetingDate, transactions, loans]);
 
   return (
     <div className="space-y-8 text-slate-800">
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 lg:gap-6 animate-in fade-in text-slate-800">
-        {members.map((m) => (
-          <div key={m.id} onClick={() => setSelectedMember(m)} className="cursor-pointer bg-white p-4 rounded-[1.5rem] border border-slate-100 flex items-center justify-between shadow-sm hover:shadow-md transition-all active:scale-95 text-slate-800">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        {members.map(m => (
+          <div key={m.id} onClick={() => setSelectedMember(m)} className="bg-white p-4 rounded-[1.5rem] border border-slate-100 flex items-center justify-between shadow-sm cursor-pointer hover:shadow-md transition-all active:scale-95">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center font-black text-emerald-600 text-sm">{String(m.name).charAt(0)}</div>
-              <div>
-                <p className="font-bold text-xs">{String(m.name)}</p>
-                {m.phone && <p className="text-[8px] text-slate-400 font-medium">{m.phone}</p>}
-              </div>
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-black">{m.name.charAt(0)}</div>
+              <div><p className="font-bold text-xs">{m.name}</p>{m.phone && <p className="text-[8px] text-slate-400 font-medium">{m.phone}</p>}</div>
             </div>
-            {!isVisionOnly && (
-              <div className="flex items-center">
-                <button title="WhatsApp" onClick={(e)=>{ e.stopPropagation(); handleSendMessage(m); }} className="p-2 text-emerald-500 hover:bg-emerald-50 rounded-lg transition-colors">
-                  <Icon name="whatsapp" className="w-4 h-4" />
-                </button>
-                <button onClick={(e)=>{ e.stopPropagation(); editMember(m.id, m.name, m.phone); }} className="p-2 text-slate-200 hover:text-indigo-600">
-                  <Icon name="edit" className="w-4 h-4" />
-                </button>
-                <button onClick={(e)=>{ e.stopPropagation(); onDelete('members', m.id); }} className="p-2 text-slate-200 hover:text-rose-500">
-                  <Icon name="trash" className="w-4 h-4" />
-                </button>
-              </div>
-            )}
+            {!isVisionOnly && <div className="flex gap-1"><button onClick={(e)=>{ e.stopPropagation(); editMember(m.id, m.name, m.phone); }} className="p-2 text-slate-200 hover:text-indigo-600 transition-colors"><Icon name="edit" className="w-4 h-4" /></button><button onClick={(e)=>{ e.stopPropagation(); onDelete('members', m.id); }} className="p-2 text-slate-200 hover:text-rose-500 transition-colors"><Icon name="trash" className="w-4 h-4" /></button></div>}
           </div>
         ))}
       </div>
       {selectedMember && (
-        <div className="fixed inset-0 z-[400] flex items-center justify-center p-6 text-slate-800 text-slate-800"><div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md text-slate-800" onClick={() => setSelectedMember(null)}></div>
-           <div className="relative w-full max-w-sm bg-white rounded-[2.5rem] shadow-2xl p-8 animate-in zoom-in-95 text-slate-800">
-              <div className="flex justify-between items-center mb-6 text-slate-800">
-                <h2 className="text-lg font-black uppercase">Bilan Séance</h2>
-                <button onClick={() => setSelectedMember(null)} className="p-2 bg-slate-50 rounded-full text-slate-800"><Icon name="close" /></button>
+        <div className="fixed inset-0 z-[400] flex items-center justify-center p-6 text-slate-800 animate-in zoom-in-95 duration-200">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={() => setSelectedMember(null)}></div>
+          <div className="relative w-full max-w-sm bg-white rounded-[2.5rem] shadow-2xl p-8 overflow-hidden">
+            <div className="flex justify-between items-center mb-6"><div><h2 className="text-lg font-black uppercase tracking-tighter">Fiche Membre</h2><p className="text-[10px] text-slate-400 font-black uppercase">{selectedMember.name}</p></div><button onClick={() => setSelectedMember(null)}><Icon name="close" /></button></div>
+            {!activeMeetingDate ? <div className="p-6 bg-rose-50 text-rose-500 rounded-2xl text-center font-black text-[10px] uppercase">Choisissez une séance active</div> : (
+              <div className="space-y-3">
+                <div className="flex justify-between p-4 bg-slate-50 rounded-2xl font-bold text-xs"><span className="text-slate-400 uppercase tracking-tight">Cotisation</span><span className="text-indigo-600 font-black">{formatCurrency(memberReport.cotis, currency)}</span></div>
+                <div className="flex justify-between p-4 bg-slate-50 rounded-2xl font-bold text-xs"><span className="text-slate-400 uppercase tracking-tight">Épargne</span><span className="text-amber-600 font-black">{formatCurrency(memberReport.epargne, currency)}</span></div>
+                <div className="flex justify-between p-4 bg-slate-50 rounded-2xl font-bold text-xs"><span className="text-slate-400 uppercase tracking-tight">Fond de Caisse</span><span className={memberReport.fonds >= 0 ? 'text-emerald-600 font-black' : 'text-rose-600 font-black'}>{formatCurrency(memberReport.fonds, currency)}</span></div>
+                <div className="flex justify-between p-4 bg-rose-50 rounded-2xl font-bold text-xs text-rose-600"><span className="uppercase tracking-tight">Prêt Dû</span><span className="font-black">{formatCurrency(memberReport.loan, currency)}</span></div>
               </div>
-              {!activeMeetingDate ? <p className="text-center text-rose-500 text-[10px] font-bold">Sélectionnez une date de séance.</p> : (
-                <div className="space-y-3">
-                  <div className="flex justify-between p-3 bg-slate-50 rounded-xl font-bold"><span className="text-slate-400">Cotisation</span><span>{formatCurrency(memberReport.cotis, currency)}</span></div>
-                  <div className="flex justify-between p-3 bg-slate-50 rounded-xl font-bold"><span className="text-slate-400">Épargne</span><span>{formatCurrency(memberReport.epargne, currency)}</span></div>
-                  <div className="flex justify-between p-3 bg-slate-50 rounded-xl font-bold"><span className="text-slate-400">Fond de Caisse</span><span className={memberReport.fonds >= 0 ? 'text-emerald-600' : 'text-rose-600'}>{formatCurrency(memberReport.fonds, currency)}</span></div>
-                  <div className="flex justify-between p-3 bg-slate-50 rounded-xl font-bold"><span className="text-slate-400">Prêt Dû</span><span className="text-rose-600">{formatCurrency(memberReport.loan, currency)}</span></div>
-                </div>
-              )}
-           </div>
+            )}
+            <div className="mt-8 pt-6 border-t border-slate-100"><ActionButton onClick={async () => { window.open(`https://wa.me/${selectedMember.phone?.replace(/[^0-9]/g, '')}`, '_blank'); }} label="Contacter WhatsApp" className="w-full bg-emerald-500 text-white p-4 rounded-2xl font-black text-[10px] uppercase shadow-lg" /></div>
+          </div>
         </div>
       )}
     </div>
@@ -545,97 +528,72 @@ function MembersView({ members, activeMeetingDate, transactions, loans, rotation
 function LoansView({ members, loans, currency, onAdd, onDelete, isVisionOnly, themeGradient, activeMeetingDate }) {
   const [data, setData] = useState({ mId: '', amt: '', rate: '10', dueDate: '' });
   const total = (Number(data.amt) || 0) * (1 + (Number(data.rate) || 0) / 100);
-  if (!activeMeetingDate) return <div className="bg-rose-50 p-10 rounded-[3rem] border-2 border-dashed border-rose-200 text-center text-rose-700 font-black">DATE DE SÉANCE REQUISE</div>;
+  if (!activeMeetingDate) return <div className="bg-rose-50 p-10 rounded-[3rem] border-2 border-dashed border-rose-200 text-center text-rose-700 font-black">DATE SÉANCE REQUISE</div>;
   return (
-    <div className="space-y-4 lg:space-y-6 text-slate-800">
+    <div className="space-y-4 text-slate-800">
       {!isVisionOnly && (
-        <div className="bg-white p-6 lg:p-8 rounded-[2.5rem] border border-slate-100 shadow-sm text-slate-800">
-          <h2 className="text-sm font-black uppercase mb-6 text-slate-700">Octroi de Prêt</h2>
+        <div className="bg-white p-6 lg:p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+          <h2 className="text-sm font-black uppercase mb-6 text-slate-700 tracking-widest">Octroi de Prêt</h2>
           <div className="space-y-5 text-slate-800">
-            <select value={data.mId} onChange={(e)=>setData({...data, mId:e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-xs outline-none text-slate-800"><option value="">Membre...</option>{members.map((m)=><option key={m.id} value={m.id}>{String(m.name)}</option>)}</select>
-            <div className="grid grid-cols-2 gap-4 text-slate-800">
-              <input type="number" placeholder="Capital" value={data.amt} onChange={(e)=>setData({...data, amt:e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-black text-sm outline-none text-slate-800" />
-              <input type="number" placeholder="Taux %" value={data.rate} onChange={(e)=>setData({...data, rate:e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-black text-sm outline-none text-slate-800" />
+            <select value={data.mId} onChange={(e)=>setData({...data, mId:e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-xs outline-none text-slate-800 shadow-inner"><option value="">Membre...</option>{members.map((m)=><option key={m.id} value={m.id}>{String(m.name)}</option>)}</select>
+            <div className="grid grid-cols-2 gap-4">
+              <input type="number" placeholder="Capital" value={data.amt} onChange={(e)=>setData({...data, amt:e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-black text-sm outline-none shadow-inner" />
+              <input type="number" placeholder="Taux %" value={data.rate} onChange={(e)=>setData({...data, rate:e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-black text-sm outline-none shadow-inner" />
             </div>
-            <input type="date" value={data.dueDate} onChange={(e)=>setData({...data, dueDate:e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-black text-sm outline-none text-indigo-600" />
+            <input type="date" value={data.dueDate} onChange={(e)=>setData({...data, dueDate:e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-black text-sm outline-none text-indigo-600 shadow-inner" />
             <ActionButton onClick={async () => { if(!data.mId || !data.amt || !data.dueDate) return; await onAdd({memberId: data.mId, principal: Number(data.amt), interestRate: Number(data.rate), totalAmount: total, dueDate: data.dueDate, status: 'actif'}); setData({mId:'', amt:'', rate:'10', dueDate:''}); }} label="Enregistrer le prêt" className={`w-full py-5 bg-gradient-to-br ${themeGradient} text-white rounded-3xl font-black text-[11px] uppercase shadow-lg`} />
           </div>
         </div>
       )}
       <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden text-slate-800">
-        <table className="w-full text-left text-[11px] text-slate-800"><tbody className="divide-y divide-slate-50 text-slate-800">{loans.map((l)=>(<tr key={l.id} className="hover:bg-slate-50 text-slate-800"><td className="px-6 py-4 font-bold">{members.find((m)=>m.id===l.memberId)?.name || 'Inconnu'}</td><td className="px-6 py-4 text-indigo-500 font-black text-[9px] uppercase">Taux: {String(l.interestRate)}%</td><td className="px-6 py-4"><span className="px-2 py-1 bg-rose-50 text-rose-600 rounded-lg font-black text-[9px] uppercase">{String(l.dueDate)}</span></td><td className="px-6 py-4 text-right font-black text-rose-500 text-sm">{formatCurrency(l.totalAmount, currency)}</td>{!isVisionOnly && <td className="px-6 py-4 text-right"><button onClick={()=>onDelete('loans', l.id)} className="p-2 text-slate-300 hover:text-rose-500"><Icon name="trash" className="w-4 h-4" /></button></td>}</tr>))}</tbody></table>
+        <table className="w-full text-left text-[11px]"><tbody className="divide-y divide-slate-50">{loans.map((l)=>(<tr key={l.id} className="hover:bg-slate-50"><td className="p-4 font-bold">{members.find((m)=>m.id===l.memberId)?.name || 'Inconnu'}</td><td className="p-4 text-indigo-500 font-black">Taux: {l.interestRate}%</td><td className="p-4"><span className="px-2 py-1 bg-rose-50 text-rose-600 rounded-lg font-black text-[9px] uppercase tracking-tighter">{l.dueDate}</span></td><td className="p-4 text-right font-black text-rose-500">{formatCurrency(l.totalAmount, currency)}</td>{!isVisionOnly && <td className="p-4 text-right"><button onClick={()=>onDelete('loans', l.id)} className="p-2 text-slate-300 hover:text-rose-500 transition-colors"><Icon name="trash" className="w-4 h-4" /></button></td>}</tr>))}</tbody></table>
       </div>
     </div>
   );
 }
 
-function SettingsView({ currency, setCurrency, profile, onUpgrade, isAdmin, allUsers, onApprove, onAdminDelete, isVisionOnly }) {
+function SettingsView({ currency, setCurrency, profile, onUpgrade, isAdmin, allUsers, onApprove, onDelete, isVisionOnly }) {
   const [exp, setExp] = useState('');
   return (
-    <div className="space-y-4 lg:space-y-10 pb-20 text-slate-800">
-      <div className="bg-white p-5 lg:p-10 rounded-[2rem] border border-slate-100 shadow-sm text-slate-800">
-          <h2 className="text-xl font-black uppercase mb-8 flex items-center gap-3 text-slate-800">Préférences</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-10 text-slate-800">
-             <div className="p-5 bg-slate-50 rounded-[1.5rem] border border-slate-100 text-slate-800">
-                <p className="font-black text-[10px] uppercase mb-4 tracking-widest text-slate-400">Devise de l'application</p>
-                <select value={currency || "FCFA"} onChange={e => setCurrency(e.target.value)} className="w-full p-4 bg-white border border-slate-100 rounded-2xl font-black text-[11px] outline-none text-slate-800"><option value="FCFA">FCFA</option><option value="USD">USD</option><option value="EUR">EUR</option></select>
+    <div className="space-y-4 lg:space-y-10 pb-20 text-slate-800 animate-in fade-in duration-500">
+      <div className="bg-white p-5 lg:p-10 rounded-[2rem] border border-slate-100 shadow-sm">
+          <h2 className="text-xl font-black uppercase mb-8 flex items-center gap-3 tracking-tighter">Préférences</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-10">
+             <div className="p-5 bg-slate-50 rounded-[1.5rem] border">
+                <p className="font-black text-[10px] uppercase mb-4 tracking-widest text-slate-400">Devise App</p>
+                <select value={currency || "FCFA"} onChange={e => setCurrency(e.target.value)} className="w-full p-4 bg-white border border-slate-100 rounded-2xl font-black text-[11px] outline-none shadow-sm"><option value="FCFA">FCFA</option><option value="USD">USD</option><option value="EUR">EUR</option></select>
              </div>
-             <div className="p-8 border-2 border-indigo-50 rounded-[2.5rem] text-center bg-white text-slate-800">
+             <div className="p-8 border-2 border-indigo-50 rounded-[2.5rem] text-center bg-white shadow-inner">
                 <div className="w-12 h-12 mx-auto mb-4 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center"><Icon name="settings" /></div>
-                <h3 className="text-lg font-black uppercase mb-6 text-slate-800">Service Premium</h3>
+                <h3 className="text-lg font-black uppercase mb-6 tracking-tighter">Service Premium</h3>
                 <div className="bg-indigo-50 p-6 rounded-2xl text-left space-y-2 mb-6 text-indigo-700">
-                    <p className="text-[10px] font-black">Mobile Money: {String(MOMO_NUMBER)}</p>
-                    <p className="text-[10px] font-black">PayPal: j_nguetsop@yahoo.com</p>
-                    <p className="text-[9px] font-medium opacity-80 mt-2 italic">* Pour activer votre compte, envoyez le montant de 1€ via l'un des canaux ci-dessus.</p>
+                    <p className="text-[10px] font-black uppercase tracking-tighter">Mobile Money : {MOMO_NUMBER}</p>
+                    <p className="text-[10px] font-black uppercase tracking-tighter">PayPal : j_nguetsop@yahoo.com</p>
+                    <p className="text-[9px] font-medium opacity-80 mt-2 italic">* Activation (1€) : membres illimités et 10 questions IA par jour.</p>
                 </div>
-                {!isVisionOnly && profile?.status === 'none' && <ActionButton onClick={onUpgrade} label="Demander Activation PRO (1€)" className="w-full bg-indigo-600 text-white p-4 rounded-2xl font-black text-xs uppercase shadow-xl" />}
-                {profile?.status === 'pending' && <div className="p-4 bg-amber-50 text-amber-600 font-black text-[10px] uppercase rounded-2xl border border-amber-100 animate-pulse">Demande d'activation envoyée...</div>}
-                {profile?.status === 'pro' && <div className="p-4 bg-emerald-50 text-emerald-600 font-black text-[10px] uppercase rounded-2xl border border-emerald-100 shadow-sm">Premium Actif</div>}
+                {!isVisionOnly && profile?.status === 'none' && <ActionButton onClick={onUpgrade} label="Demander Activation PRO" className="w-full bg-indigo-600 text-white p-4 rounded-2xl font-black text-xs uppercase shadow-xl" />}
+                {profile?.status === 'pending' && <div className="p-4 bg-amber-50 text-amber-600 font-black text-[10px] uppercase rounded-2xl border border-amber-100 animate-pulse text-center">Demande en cours...</div>}
+                {profile?.status === 'pro' && <div className="p-4 bg-emerald-50 text-emerald-600 font-black text-[10px] uppercase rounded-2xl border border-emerald-100 shadow-sm text-center">Premium Actif</div>}
              </div>
           </div>
       </div>
-
-      <div className="bg-white p-6 lg:p-10 rounded-[2rem] border border-slate-100 shadow-sm text-slate-800">
-        <h2 className="text-xl font-black uppercase mb-4 flex items-center gap-3 text-slate-800">Support & Assistance</h2>
-        <div className="flex flex-col md:flex-row items-center gap-6 p-6 bg-emerald-50 rounded-[2rem] border border-emerald-100">
-          <div className="w-12 h-12 bg-emerald-500 rounded-full flex items-center justify-center text-white shadow-lg text-slate-800">
-            <Icon name="phone" className="w-6 h-6" />
-          </div>
-          <div className="text-center md:text-left text-slate-800">
-            <p className="text-xs font-black uppercase text-emerald-600 tracking-widest">Contact WhatsApp</p>
-            <p className="text-xl font-black text-emerald-800">{WHATSAPP_SUPPORT}</p>
-          </div>
-          <a href={`https://wa.me/${WHATSAPP_SUPPORT.replace(/^00/, '')}`} target="_blank" rel="noreferrer" className="md:ml-auto px-8 py-3 bg-emerald-500 text-white rounded-2xl font-black text-[10px] uppercase shadow-lg shadow-emerald-100 active:scale-95 transition-all">
-            Discuter maintenant
-          </a>
+      <div className="bg-white p-6 lg:p-10 rounded-[2rem] border border-slate-100 shadow-sm">
+        <h2 className="text-xl font-black uppercase mb-4 flex items-center gap-3 tracking-tighter">Support & Assistance</h2>
+        <div className="flex flex-col md:flex-row items-center gap-6 p-6 bg-emerald-50 rounded-[2rem] border border-emerald-100 text-slate-800">
+          <div className="w-12 h-12 bg-emerald-500 rounded-full flex items-center justify-center text-white shadow-lg"><Icon name="phone" className="w-6 h-6" /></div>
+          <div className="text-center md:text-left"><p className="text-xs font-black uppercase text-emerald-600 tracking-widest">WhatsApp Direct</p><p className="text-xl font-black text-emerald-800">{WHATSAPP_SUPPORT}</p></div>
+          <a href={`https://wa.me/${WHATSAPP_SUPPORT.replace(/^00/, '')}`} target="_blank" rel="noreferrer" className="md:ml-auto px-8 py-3 bg-emerald-500 text-white rounded-2xl font-black text-[10px] uppercase shadow-lg active:scale-95 transition-all text-center tracking-tighter">Discuter maintenant</a>
         </div>
       </div>
-
       {isAdmin && (
         <div className="bg-white p-6 lg:p-10 rounded-[2rem] border-4 border-indigo-100 shadow-xl text-slate-800">
-          <h2 className="text-xs font-black uppercase text-indigo-600 mb-6 text-slate-800">Admin Panel</h2>
-          <div className="overflow-x-auto text-slate-800">
-            <table className="w-full text-left text-slate-800">
-              <thead>
-                <tr className="text-[9px] uppercase text-slate-400">
-                  <th>Email</th><th>Échéance</th><th className="text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-slate-800">
+          <h2 className="text-xs font-black uppercase text-indigo-600 mb-6 font-bold uppercase tracking-widest">Admin Panel</h2>
+          <div className="overflow-x-auto"><table className="w-full text-left"><thead><tr className="text-[9px] uppercase text-slate-400 tracking-widest"><th className="py-2">Utilisateur</th><th className="py-2">Expiration</th><th className="text-right py-2">Action</th></tr></thead>
+              <tbody className="divide-y divide-slate-100">
                 {(allUsers || []).map(u => (
-                  <tr key={u.uid} className="text-slate-800">
-                    <td className="py-4 text-xs font-bold text-slate-800">
-                      <div className="flex items-center gap-2">
-                        {u.status === 'pending' && <div className="relative flex h-2 w-2 text-slate-800"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span></div>}
-                        {String(u.email)}
-                      </div>
-                    </td>
-                    <td className="py-4 text-[10px] font-black text-indigo-600 text-slate-800">{String(u.expiryDate || 'N/A')}</td>
-                    <td className="py-4 text-right space-x-2 text-slate-800">
-                      <input type="date" className="p-1 border rounded text-[10px] text-slate-800" onChange={e=>setExp(e.target.value)} />
-                      <button onClick={() => onApprove(u.uid, exp || new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0])} className="bg-emerald-600 text-white px-2 py-1 rounded text-[8px] font-black uppercase shadow-sm">Activer</button>
-                      <button onClick={() => onAdminDelete(u.uid)} className="bg-rose-500 text-white px-2 py-1 rounded shadow-sm"><Icon name="trash" className="w-3 h-3 text-white" /></button>
-                    </td>
+                  <tr key={u.uid}><td className="py-4 text-xs font-bold uppercase flex items-center gap-2">{u.status === 'pending' && <div className="h-2 w-2 rounded-full bg-rose-500 animate-ping"></div>}{String(u.email)}</td>
+                    <td className="py-4 text-[10px] font-black text-indigo-600">{String(u.expiryDate || 'N/A')}</td>
+                    <td className="py-4 text-right space-x-2"><input type="date" className="p-1 border rounded text-[10px] outline-none text-slate-800" onChange={e=>setExp(e.target.value)} /><button onClick={() => onApprove(u.uid, exp || new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0])} className="bg-emerald-600 text-white px-3 py-1 rounded text-[8px] font-black uppercase shadow-sm transition-colors">Valider</button><button onClick={() => onDelete('users', u.uid)} className="bg-rose-500 text-white px-2 py-1 rounded shadow-sm"><Icon name="trash" className="w-3 h-3 text-white" /></button></td>
                   </tr>
                 ))}
               </tbody>
@@ -648,7 +606,7 @@ function SettingsView({ currency, setCurrency, profile, onUpgrade, isAdmin, allU
 }
 
 // ==========================================
-// COMPOSANT PRINCIPAL
+// COMPOSANT PRINCIPAL APP
 // ==========================================
 
 export default function App() {
@@ -656,6 +614,8 @@ export default function App() {
   const [profile, setProfile] = useState(null);
   const [allUsers, setAllUsers] = useState([]);
   const [currentPage, setCurrentPage] = useState('dashboard');
+  const [pdfContent, setPdfContent] = useState(null); 
+  const [showAI, setShowAI] = useState(false);
   const [members, setMembers] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [loans, setLoans] = useState([]);
@@ -676,72 +636,41 @@ export default function App() {
   const themeGradient = isPremium ? 'from-amber-500 to-amber-600' : 'from-indigo-600 to-indigo-800';
 
   const NAV_LINKS = [
-    { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
-    { id: 'members', label: 'Membres', icon: 'members' },
-    { id: 'finances', label: 'Finances', icon: 'cotisations' },
-    { id: 'reports', label: 'Rapports', icon: 'fileText' },
-    { id: 'prets', label: 'Prêts', icon: 'prets' },
-    { id: 'rotations', label: 'Rotations', icon: 'share' },
-    { id: 'fonds', label: 'Fond de caisse', icon: 'fonds' },
-    { id: 'settings', label: 'Paramètres', icon: 'settings' }, 
+    { id: 'dashboard', label: 'Accueil', icon: 'dashboard' }, { id: 'members', label: 'Membres', icon: 'members' },
+    { id: 'finances', label: 'Finances', icon: 'cotisations' }, { id: 'reports', label: 'Rapports', icon: 'fileText' },
+    { id: 'prets', label: 'Prêts', icon: 'prets' }, { id: 'rotations', label: 'Rotations', icon: 'share' },
+    { id: 'fonds', label: 'Caisse', icon: 'fonds' }, { id: 'settings', label: 'Options', icon: 'settings' }, 
   ];
 
-  const filteredTransactions = useMemo(() => {
-    if (!activeMeetingDate) return [];
-    return transactions.filter(t => t.date === activeMeetingDate);
-  }, [transactions, activeMeetingDate]);
-
+  const filteredTransactions = useMemo(() => activeMeetingDate ? transactions.filter(t => t.date === activeMeetingDate) : [], [transactions, activeMeetingDate]);
   const stats = useMemo(() => {
     const s = filteredTransactions.filter(t => t.status === 'completed');
-    return {
-      cotisations: s.filter(t => t.type === 'cotisation').reduce((sum, t) => sum + t.amount, 0),
-      epargne: s.filter(t => t.type === 'epargne').reduce((sum, t) => sum + t.amount, 0),
-      fonds: s.filter(t => t.type === 'fonds').reduce((sum, t) => sum + t.amount, 0),
-    };
+    return { cotisations: s.filter(t => t.type === 'cotisation').reduce((sum, t) => sum + t.amount, 0), epargne: s.filter(t => t.type === 'epargne').reduce((sum, t) => sum + t.amount, 0), fonds: s.filter(t => t.type === 'fonds').reduce((sum, t) => sum + t.amount, 0) };
   }, [filteredTransactions]);
 
   const handleLogout = async () => { await signOut(auth); setUser(null); setProfile(null); setCurrentPage('dashboard'); setIsMobileMenuOpen(false); };
-  
   const handleAddMember = async (name, phone) => { 
     if (isVisionOnly || !user?.uid) return;
-    // Blocage si limite atteinte en gratuit
-    if (!isPremium && members.length >= FREE_MEMBER_LIMIT) {
-        alert("Limite de membres atteinte. Veuillez passer au mode PRO pour ajouter plus de 10 membres.");
-        return;
-    }
-    await addDoc(collection(db, 'artifacts', NJANGI_APP_ID, 'public', 'data', 'members'), { 
-        name, 
-        phone: phone || "", 
-        joinDate: new Date().toISOString().split('T')[0], 
-        presidentId: user.uid 
-    }); 
+    if (!isPremium && members.length >= FREE_MEMBER_LIMIT) return;
+    await addDoc(collection(db, 'artifacts', NJANGI_APP_ID, 'public', 'data', 'members'), { name, phone: phone || "", joinDate: new Date().toISOString().split('T')[0], presidentId: user.uid }); 
   };
-
-  const handleUpdateMember = async (id, newName, newPhone) => { 
+  const handleUpdateMember = async (id, newName, newPhone) => { if (isVisionOnly) return; await updateDoc(doc(db, 'artifacts', NJANGI_APP_ID, 'public', 'data', 'members', id), { name: newName, phone: newPhone || "" }); };
+  const handleDelete = (coll, id) => { 
     if (isVisionOnly) return; 
-    await updateDoc(doc(db, 'artifacts', NJANGI_APP_ID, 'public', 'data', 'members', id), { 
-        name: newName,
-        phone: newPhone || ""
-    }); 
+    setConfirmState({ isOpen: true, title: "Supprimer cet élément ?", onConfirm: async () => { try { const path = coll === 'users' ? 'users' : coll; await deleteDoc(doc(db, 'artifacts', NJANGI_APP_ID, 'public', 'data', path, id)); setConfirmState(p => ({ ...p, isOpen: false })); } catch (e) { console.error(e); } } }); 
   };
-
-  const handleDelete = (coll, id) => { if (isVisionOnly) return; setConfirmState({ isOpen: true, title: "Supprimer cet élément ?", onConfirm: async () => { try { await deleteDoc(doc(db, 'artifacts', NJANGI_APP_ID, 'public', 'data', coll, id)); setConfirmState(p => ({ ...p, isOpen: false })); } catch (e) { console.error(e); } } }); };
   const handleAddTransaction = async (mId, amt, type, method = 'cash') => { if (isVisionOnly || !dataOwnerId || !activeMeetingDate) return; await addDoc(collection(db, 'artifacts', NJANGI_APP_ID, 'public', 'data', 'transactions'), { memberId: mId, amount: amt, type, method, status: 'completed', date: activeMeetingDate, presidentId: dataOwnerId }); };
   const handleUpdateTransaction = async (id, newAmt) => { if (isVisionOnly) return; await updateDoc(doc(db, 'artifacts', NJANGI_APP_ID, 'public', 'data', 'transactions', id), { amount: newAmt }); };
   const handleAddLoan = async (loanData) => { if (isVisionOnly || !dataOwnerId || !activeMeetingDate) return; await addDoc(collection(db, 'artifacts', NJANGI_APP_ID, 'public', 'data', 'loans'), { ...loanData, startDate: activeMeetingDate, presidentId: dataOwnerId }); };
   const handleAddRotation = async (beneficiaryId, hostId, date) => { if (isVisionOnly || !dataOwnerId || !date) return; await addDoc(collection(db, 'artifacts', NJANGI_APP_ID, 'public', 'data', 'rotations'), { date: date, beneficiaryMemberId: beneficiaryId, hostMemberId: hostId, presidentId: dataOwnerId }); };
   const handleRequestPro = async () => { if (user) await updateDoc(doc(db, 'artifacts', NJANGI_APP_ID, 'public', 'data', 'users', user.uid), { status: 'pending', requestDate: new Date().toISOString() }); };
   const handleApprovePro = async (uid, expiry) => { if (user?.email === ADMIN_EMAIL) await updateDoc(doc(db, 'artifacts', NJANGI_APP_ID, 'public', 'data', 'users', uid), { status: 'pro', expiryDate: expiry }); };
-  const handleAdminDeleteUser = (uid) => { if (user?.email !== ADMIN_EMAIL) return; setConfirmState({ isOpen: true, title: "Supprimer ce client ?", onConfirm: async () => { try { await deleteDoc(doc(db, 'artifacts', NJANGI_APP_ID, 'public', 'data', 'users', uid)); setConfirmState(p => ({ ...p, isOpen: false })); } catch (e) { console.error(e); } } }); };
 
   useEffect(() => {
     const initAuth = async () => {
       try {
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          await signInWithCustomToken(auth, __initial_auth_token).catch(() => {});
-        } else { 
-          await signInAnonymously(auth).catch(() => {});
-        }
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await signInWithCustomToken(auth, __initial_auth_token).catch(() => {});
+        else await signInAnonymously(auth).catch(() => {});
       } catch (e) { console.error(e); }
     };
     initAuth();
@@ -752,7 +681,7 @@ export default function App() {
         onSnapshot(userDocRef, (snap) => {
           if (snap.exists()) setProfile(snap.data());
           else {
-            const newProfile = { uid: firebaseUser.uid, email: firebaseUser.email || 'Anonyme', status: 'none', role: 'president' };
+            const newProfile = { uid: firebaseUser.uid, email: firebaseUser.email || 'Anonyme', status: 'none', role: 'president', aiUsage: { date: '', count: 0 } };
             setDoc(userDocRef, newProfile).catch(() => {});
             setProfile(newProfile);
           }
@@ -765,39 +694,27 @@ export default function App() {
 
   useEffect(() => {
     if (!user || !dataOwnerId) return;
-    const paths = {
-      members: collection(db, 'artifacts', NJANGI_APP_ID, 'public', 'data', 'members'),
-      transactions: collection(db, 'artifacts', NJANGI_APP_ID, 'public', 'data', 'transactions'),
-      loans: collection(db, 'artifacts', NJANGI_APP_ID, 'public', 'data', 'loans'),
-      rotations: collection(db, 'artifacts', NJANGI_APP_ID, 'public', 'data', 'rotations'),
-      users: collection(db, 'artifacts', NJANGI_APP_ID, 'public', 'data', 'users')
-    };
-    
+    const paths = { members: collection(db, 'artifacts', NJANGI_APP_ID, 'public', 'data', 'members'), transactions: collection(db, 'artifacts', NJANGI_APP_ID, 'public', 'data', 'transactions'), loans: collection(db, 'artifacts', NJANGI_APP_ID, 'public', 'data', 'loans'), rotations: collection(db, 'artifacts', NJANGI_APP_ID, 'public', 'data', 'rotations'), users: collection(db, 'artifacts', NJANGI_APP_ID, 'public', 'data', 'users') };
     const unsubMembers = onSnapshot(paths.members, (snap) => setMembers(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(m => m.presidentId === dataOwnerId)), (err) => console.error(err));
     const unsubTransactions = onSnapshot(paths.transactions, (snap) => setTransactions(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(t => t.presidentId === dataOwnerId)), (err) => console.error(err));
     const unsubLoans = onSnapshot(paths.loans, (snap) => setLoans(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(l => l.presidentId === dataOwnerId)), (err) => console.error(err));
     const unsubRotations = onSnapshot(paths.rotations, (snap) => setRotations(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(r => r.presidentId === dataOwnerId)), (err) => console.error(err));
     const unsubUsers = onSnapshot(paths.users, (snap) => setAllUsers(snap.docs.map(d => d.data())), (err) => console.error(err));
-    
     return () => { unsubMembers(); unsubTransactions(); unsubLoans(); unsubRotations(); unsubUsers(); };
   }, [user, dataOwnerId]);
 
-  const selectedBalanceValue = useMemo(() => {
-    if (!globalFilter.memberId) return null;
-    return transactions.filter(t => t.status === 'completed' && t.memberId === globalFilter.memberId && t.type === 'fonds').reduce((sum, t) => sum + t.amount, 0);
-  }, [transactions, globalFilter.memberId]);
+  const selectedBalanceValue = useMemo(() => globalFilter.memberId ? transactions.filter(t => t.status === 'completed' && t.memberId === globalFilter.memberId && t.type === 'fonds').reduce((sum, t) => sum + t.amount, 0) : null, [transactions, globalFilter.memberId]);
 
-  if (isLoading) return <div className="h-screen flex items-center justify-center bg-slate-50 font-black text-indigo-600 animate-pulse uppercase tracking-widest">Chargement NJANGI...</div>;
-
+  if (isLoading) return <div className="h-screen flex items-center justify-center bg-slate-50 font-black text-indigo-600 animate-pulse uppercase tracking-widest text-sm">Chargement...</div>;
   if (!user) return (
     <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-6 text-slate-800 text-center">
-      <div className="w-full max-w-md bg-white rounded-[3rem] shadow-2xl p-10 border border-slate-100">
-          <div className="mb-10 text-slate-800"><div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center text-white mx-auto mb-4 shadow-lg"><Icon name="dashboard" className="w-10 h-10" /></div><h1 className="text-2xl font-black uppercase tracking-tighter text-slate-800">Tontine pour tous</h1></div>
-          <div className="space-y-4 text-slate-800">
-            {authError && <div className="bg-rose-50 text-rose-500 p-4 rounded-xl text-[10px] font-black uppercase">{authError}</div>}
-            <input type="email" placeholder="Email" className="w-full p-4 bg-slate-50 border-none rounded-2xl font-bold outline-none text-slate-800" value={authForm.email} onChange={e => setAuthForm({...authForm, email: e.target.value})} />
-            <input type="password" placeholder="Mot de passe" className="w-full p-4 bg-slate-50 border-none rounded-2xl font-bold outline-none text-slate-800" value={authForm.password} onChange={e => setAuthForm({...authForm, password: e.target.value})} />
-            <ActionButton onClick={async () => { setAuthError(''); try { if (authMode === 'login') await signInWithEmailAndPassword(auth, authForm.email, authForm.password); else await createUserWithEmailAndPassword(auth, authForm.email, authForm.password); } catch (e) { setAuthError('Identifiants incorrects'); } }} label={authMode === 'login' ? 'Connexion' : 'Inscription'} className="w-full bg-indigo-600 text-white p-5 rounded-2xl font-black uppercase shadow-xl" />
+      <div className="w-full max-w-md bg-white rounded-[3rem] shadow-2xl p-10 border border-slate-100 text-slate-800">
+          <div className="mb-10 text-slate-800"><div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center text-white mx-auto mb-4 shadow-lg"><Icon name="dashboard" className="w-10 h-10" /></div><h1 className="text-2xl font-black uppercase tracking-tighter">Tontine pour tous</h1></div>
+          <div className="space-y-4">
+            {authError && <div className="bg-rose-50 text-rose-500 p-4 rounded-xl text-[10px] font-black uppercase tracking-widest">{authError}</div>}
+            <input type="email" placeholder="Email" className="w-full p-4 bg-slate-50 border-none rounded-2xl font-bold outline-none text-slate-800 shadow-inner" value={authForm.email} onChange={e => setAuthForm({...authForm, email: e.target.value})} />
+            <input type="password" placeholder="Mot de passe" className="w-full p-4 bg-slate-50 border-none rounded-2xl font-bold outline-none text-slate-800 shadow-inner" value={authForm.password} onChange={e => setAuthForm({...authForm, password: e.target.value})} />
+            <ActionButton onClick={async () => { setAuthError(''); try { if (authMode === 'login') await signInWithEmailAndPassword(auth, authForm.email, authForm.password); else await createUserWithEmailAndPassword(auth, authForm.email, authForm.password); } catch (e) { setAuthError('Échec connexion'); } }} label={authMode === 'login' ? 'Connexion' : 'Inscription'} className="w-full bg-indigo-600 text-white p-5 rounded-2xl font-black uppercase shadow-xl" />
           </div>
           <div className="mt-6 text-slate-800"><button onClick={() => setAuthMode(authMode === 'login' ? 'signup' : 'login')} className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{authMode === 'login' ? "Nouveau ? Créer un compte" : "Déjà membre ? Connexion"}</button></div>
       </div>
@@ -807,91 +724,43 @@ export default function App() {
   return (
     <div className="flex h-screen bg-[#F8FAFC] text-slate-900 font-sans overflow-hidden flex-col lg:flex-row">
       <ConfirmModal isOpen={confirmState.isOpen} title={confirmState.title} onConfirm={confirmState.onConfirm} onCancel={() => setConfirmState({...confirmState, isOpen: false})} />
-
+      {pdfContent && <PdfOutputView content={pdfContent} currency={currency} onExit={() => setPdfContent(null)} />}
+      {showAI && <AiAssistant members={members} stats={stats} activeMeetingDate={activeMeetingDate} transactions={transactions} currency={currency} onClose={() => setShowAI(false)} profile={profile} user={user} />}
       <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-slate-100 shrink-0">
-        <div className="p-8 mb-8 flex items-center gap-2">
-          <div className={`p-2 rounded-xl text-white ${isPremium ? 'bg-amber-500' : 'bg-indigo-600'}`}><Icon name="dashboard" /></div>
-          <span className="text-xl font-black uppercase tracking-tighter">Tontine</span>
-        </div>
-        <nav className="flex-1 px-4 space-y-1">
-          {NAV_LINKS.map(item => (
-            <button key={item.id} onClick={() => setCurrentPage(item.id)} className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${currentPage === item.id ? 'bg-slate-50 text-indigo-700 border border-slate-100' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-600'}`}>
-              <Icon name={item.icon} className="w-3.5 h-3.5" />
-              {String(item.label)}
-            </button>
-          ))}
-        </nav>
-        <div className="p-6">
-          <button onClick={handleLogout} className="w-full flex items-center gap-4 p-3 text-[10px] font-black text-rose-500 uppercase tracking-widest hover:bg-rose-50 rounded-xl">Quitter</button>
-        </div>
+        <div className="p-8 mb-8 flex items-center gap-2"><div className={`p-2 rounded-xl text-white ${isPremium ? 'bg-amber-500' : 'bg-indigo-600'}`}><Icon name="dashboard" /></div><span className="text-xl font-black uppercase tracking-tight">Tontine</span></div>
+        <nav className="flex-1 px-4 space-y-1">{NAV_LINKS.map(item => (<button key={item.id} onClick={() => setCurrentPage(item.id)} className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${currentPage === item.id ? 'bg-slate-50 text-indigo-700 border border-slate-100 shadow-sm' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-600'}`}><Icon name={item.icon} className="w-3.5 h-3.5" />{String(item.label)}</button>))}</nav>
+        <div className="p-6"><button onClick={handleLogout} className="w-full flex items-center gap-4 p-3 text-[10px] font-black text-rose-500 uppercase tracking-widest hover:bg-rose-50 rounded-xl transition-all">Quitter</button></div>
       </aside>
-      
       <main className="flex-1 flex flex-col relative overflow-hidden bg-slate-50/50">
         <header className="h-14 bg-white border-b flex items-center justify-between px-4 lg:px-8 shrink-0">
             <button onClick={() => setIsMobileMenuOpen(true)} className="lg:hidden p-2 text-slate-800"><Icon name="menu" /></button>
-            {activeMeetingDate ? (
-              <div className="text-[9px] font-black text-indigo-600 uppercase bg-indigo-50 px-3 py-1.5 rounded-full border border-indigo-100">Réunion : {String(activeMeetingDate)}</div>
-            ) : (
-              <div className="text-[9px] font-black text-slate-400 uppercase bg-slate-100 px-3 py-1.5 rounded-full">Aucune séance active</div>
-            )}
-            <div className="flex items-center gap-3">
-              <span className="hidden md:block text-[9px] font-black uppercase text-slate-400">{user?.email}</span>
-              <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-black text-[10px] uppercase shadow-md">{user?.email?.charAt(0)}</div>
-            </div>
+            <div className={`text-[9px] font-black uppercase px-3 py-1.5 rounded-full border ${activeMeetingDate ? 'text-indigo-600 bg-indigo-50 border-indigo-100 shadow-sm' : 'text-slate-400 bg-slate-100 border-transparent shadow-none'}`}>{activeMeetingDate ? `Séance : ${activeMeetingDate}` : 'Attente séance'}</div>
+            <div className="flex items-center gap-3 text-slate-800"><span className="hidden md:block text-[9px] font-black uppercase text-slate-400">{user?.email}</span><div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-black text-[10px] uppercase shadow-md">{user?.email?.charAt(0)}</div></div>
         </header>
-
-        <div className="flex-1 overflow-y-auto p-4 lg:p-10 scrollbar-hide">
+        <div className="flex-1 overflow-y-auto p-4 lg:p-10 scrollbar-hide text-slate-800">
             <div className="max-w-6xl mx-auto space-y-8">
-               {currentPage === 'dashboard' && <DashboardView stats={stats} members={members} currency={currency} isVisionOnly={isVisionOnly} onAddMember={handleAddMember} onAddTransaction={handleAddTransaction} themeGradient={themeGradient} activeMeetingDate={activeMeetingDate} setActiveMeetingDate={setActiveMeetingDate} isPremium={isPremium} />}
-               {currentPage === 'members' && <MembersView members={members} activeMeetingDate={activeMeetingDate} transactions={transactions} loans={loans} rotations={rotations} currency={currency} onDelete={handleDelete} isVisionOnly={isVisionOnly} onUpdate={handleUpdateMember} />}
-               {currentPage === 'reports' && <ReportsView members={members} transactions={transactions} rotations={rotations} loans={loans} currency={currency} themeGradient={themeGradient} defaultDate={activeMeetingDate} />}
+               {currentPage === 'dashboard' && <DashboardView stats={stats} members={members} currency={currency} isVisionOnly={isVisionOnly} onAddMember={handleAddMember} onAddTransaction={handleAddTransaction} themeGradient={themeGradient} activeMeetingDate={activeMeetingDate} setActiveMeetingDate={setActiveMeetingDate} isPremium={isPremium} onOpenAI={() => setShowAI(true)} />}
+               {currentPage === 'members' && <MembersView members={members} activeMeetingDate={activeMeetingDate} transactions={transactions} loans={loans} onDelete={handleDelete} isVisionOnly={isVisionOnly} onUpdate={handleUpdateMember} currency={currency} />}
+               {currentPage === 'reports' && <ReportsView members={members} transactions={transactions} rotations={rotations} loans={loans} currency={currency} themeGradient={themeGradient} defaultDate={activeMeetingDate} onRedirectToPdf={(data) => setPdfContent(data)} />}
                {currentPage === 'finances' && <FinancesView transactions={filteredTransactions} allTransactions={transactions} members={members} currency={currency} onDelete={handleDelete} onUpdate={handleUpdateTransaction} isVisionOnly={isVisionOnly} activeMeetingDate={activeMeetingDate} />}
-               {currentPage === 'rotations' && <RotationsView members={members} rotations={rotations} activeMeetingDate={activeMeetingDate} onAddRotation={handleAddRotation} onDelete={handleDelete} isVisionOnly={isVisionOnly} />}
-               {currentPage === 'fonds' && (
-                <div className="space-y-4">
-                   <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
-                     <select value={globalFilter.memberId} onChange={(e) => setGlobalFilter({...globalFilter, memberId: e.target.value})} className="flex-1 p-2 bg-slate-50 border-none rounded-xl text-[10px] font-bold outline-none text-slate-800"><option value="">Tous les membres</option>{members.map(m => <option key={m.id} value={String(m.id)}>{String(m.name)}</option>)}</select>
-                     {selectedBalanceValue !== null && (<div className="bg-emerald-50 px-3 py-1.5 rounded-xl text-emerald-700 text-[10px] font-black uppercase">Solde Net: {formatCurrency(selectedBalanceValue, currency)}</div>)}
-                   </div>
-                   <GenericHistory title={`Fond de caisse - ${activeMeetingDate || 'Global'}`} transactions={activeMeetingDate ? filteredTransactions.filter(t => t.type === 'fonds' && (!globalFilter.memberId || t.memberId === globalFilter.memberId)) : transactions.filter(t => t.type === 'fonds')} members={members} currency={currency} onDelete={handleDelete} onUpdate={handleUpdateTransaction} isVisionOnly={isVisionOnly} />
-                </div>
-               )}
+               {currentPage === 'rotations' && <RotationsView members={members} rotations={rotations} activeMeetingDate={activeMeetingDate} onAddRotation={handleAddRotation} onDelete={handleDelete} isVisionOnly={isVisionOnly} themeGradient={themeGradient} onRedirectToPdf={(data) => setPdfContent(data)} />}
+               {currentPage === 'fonds' && (<div className="space-y-4"><div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4 text-slate-800"><select value={globalFilter.memberId} onChange={(e) => setGlobalFilter({...globalFilter, memberId: e.target.value})} className="flex-1 p-2 bg-slate-50 border-none rounded-xl text-[10px] font-bold outline-none shadow-inner"><option value="">Tous les membres</option>{members.map(m => <option key={m.id} value={String(m.id)}>{String(m.name)}</option>)}</select>{selectedBalanceValue !== null && (<div className="bg-emerald-50 px-3 py-1.5 rounded-xl text-emerald-700 text-[10px] font-black uppercase shadow-sm tracking-tighter">Net: {formatCurrency(selectedBalanceValue, currency)}</div>)}</div><GenericHistory title={`Fond de Caisse`} transactions={activeMeetingDate ? filteredTransactions.filter(t => t.type === 'fonds' && (!globalFilter.memberId || t.memberId === globalFilter.memberId)) : transactions.filter(t => t.type === 'fonds')} members={members} currency={currency} onDelete={handleDelete} onUpdate={handleUpdateTransaction} isVisionOnly={isVisionOnly} /></div>)}
                {currentPage === 'prets' && <LoansView loans={activeMeetingDate ? loans.filter(l => l.startDate === activeMeetingDate) : loans} members={members} currency={currency} onAdd={handleAddLoan} onDelete={handleDelete} isVisionOnly={isVisionOnly} themeGradient={themeGradient} activeMeetingDate={activeMeetingDate} />}
-               {currentPage === 'settings' && <SettingsView currency={currency} setCurrency={setCurrency} profile={profile} onUpgrade={handleRequestPro} isAdmin={user?.email === ADMIN_EMAIL} allUsers={allUsers} onApprove={handleApprovePro} onAdminDelete={handleAdminDeleteUser} isVisionOnly={isVisionOnly} />}
+               {currentPage === 'settings' && <SettingsView currency={currency} setCurrency={setCurrency} profile={profile} onUpgrade={handleRequestPro} isAdmin={user?.email === ADMIN_EMAIL} allUsers={allUsers} onApprove={handleApprovePro} onDelete={handleDelete} isVisionOnly={isVisionOnly} />}
             </div>
         </div>
-
         <div className="lg:hidden bg-white border-t flex justify-around p-2 shadow-2xl">
-            {[ { id: 'dashboard', icon: 'dashboard' }, { id: 'members', icon: 'members' }, { id: 'finances', icon: 'cotisations' }, { id: 'reports', icon: 'fileText' } ].map(tab => (
-              <button key={tab.id} onClick={() => setCurrentPage(tab.id)} className={`p-2 transition-colors ${currentPage === tab.id ? 'text-indigo-600' : 'text-slate-400'}`}><Icon name={tab.icon} /></button>
-            ))}
+            {[ { id: 'dashboard', icon: 'dashboard' }, { id: 'members', icon: 'members' }, { id: 'finances', icon: 'cotisations' }, { id: 'reports', icon: 'fileText' } ].map(tab => (<button key={tab.id} onClick={() => setCurrentPage(tab.id)} className={`p-2 transition-colors ${currentPage === tab.id ? 'text-indigo-600' : 'text-slate-400'}`}><Icon name={tab.icon} /></button>))}
             <button onClick={() => setIsMobileMenuOpen(true)} className="p-2 text-slate-400"><Icon name="dots" /></button>
         </div>
       </main>
-
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-[100] lg:hidden animate-in fade-in">
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)}></div>
           <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-[3rem] p-8 space-y-4 shadow-2xl">
-            <div className="bg-emerald-50 p-4 rounded-2xl flex items-center justify-between border border-emerald-100">
-              <div className="flex items-center gap-3">
-                <Icon name="phone" className="text-emerald-500 w-5 h-5" />
-                <span className="text-[10px] font-black text-emerald-700 uppercase tracking-tighter">Assistance: {WHATSAPP_SUPPORT}</span>
-              </div>
-              <a href={`https://wa.me/${WHATSAPP_SUPPORT.replace(/^00/, '')}`} className="p-2 bg-emerald-500 text-white rounded-xl active:scale-95 transition-all shadow-sm">
-                <Icon name="phone" className="w-4 h-4" />
-              </a>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              {NAV_LINKS.map(item => (
-                <button key={item.id} onClick={() => { setCurrentPage(item.id); setIsMobileMenuOpen(false); }} className={`flex items-center gap-3 p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${currentPage === item.id ? 'text-indigo-600 bg-indigo-50 border border-indigo-100' : 'text-slate-800 bg-slate-50 border border-slate-100'}`}>
-                  <Icon name={item.icon} className="w-5 h-5" />
-                  {String(item.label)}
-                </button>
-              ))}
-            </div>
-            <button onClick={handleLogout} className="w-full p-5 bg-rose-50 text-rose-500 rounded-2xl text-[10px] font-black uppercase shadow-sm border border-rose-100">Déconnexion</button>
+            <div className="bg-emerald-50 p-4 rounded-2xl flex items-center justify-between border border-emerald-100 shadow-sm text-slate-800"><div className="flex items-center gap-3"><Icon name="phone" className="text-emerald-500 w-5 h-5" /><span className="text-[10px] font-black text-emerald-700 uppercase tracking-tighter text-slate-800">Support: {WHATSAPP_SUPPORT}</span></div><a href={`https://wa.me/${WHATSAPP_SUPPORT.replace(/^00/, '')}`} className="p-2 bg-emerald-500 text-white rounded-xl active:scale-95 transition-all shadow-sm"><Icon name="phone" className="w-4 h-4" /></a></div>
+            <div className="grid grid-cols-2 gap-4 text-slate-800"><button onClick={() => { setShowAI(true); setIsMobileMenuOpen(false); }} className="flex items-center gap-3 p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all text-white bg-slate-900 border border-slate-800 shadow-sm"><Icon name="sparkles" className="w-5 h-5" /> Assistant IA</button>{NAV_LINKS.map(item => (<button key={item.id} onClick={() => { setCurrentPage(item.id); setIsMobileMenuOpen(false); }} className={`flex items-center gap-3 p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${currentPage === item.id ? 'text-indigo-600 bg-indigo-50 border border-indigo-100' : 'text-slate-800 bg-slate-50 border border-slate-100 shadow-sm'}`}><Icon name={item.icon} className="w-5 h-5" />{String(item.label)}</button>))}</div>
+            <button onClick={handleLogout} className="w-full p-5 bg-rose-50 text-rose-500 rounded-2xl text-[10px] font-black uppercase shadow-sm border border-rose-100 transition-all tracking-tighter">Quitter l'application</button>
           </div>
         </div>
       )}
