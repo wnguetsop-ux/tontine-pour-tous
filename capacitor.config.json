@@ -1,0 +1,6 @@
+{
+  "appId": "com.tontine.pourtous",
+  "appName": "Tontine Pour Tous",
+  "webDir": "out",
+  "bundledWebRuntime": false
+}

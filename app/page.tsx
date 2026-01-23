@@ -37,7 +37,7 @@ const firebaseConfig = {
   measurementId: "G-VCQB93KYZB"
 };
 
-const apiKey = "AIzaSyBTYhcsyaWHahX7nHItpcw6pWvSSCEZOxc"; 
+const apiKey = "AIzaSyCO3RwS9VvZNJIvUj3PneYVYhiiDfxijmQ"; 
 const NJANGI_APP_ID = typeof __app_id !== 'undefined' ? __app_id : "tontine_pour_tous_v1";
 const ADMIN_EMAIL = "wnguetsop@gmail.com";
 const WHATSAPP_SUPPORT = "00393299639430"; 
