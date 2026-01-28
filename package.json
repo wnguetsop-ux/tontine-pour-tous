@@ -12,7 +12,9 @@
     "@capacitor/android": "^5.7.0",
     "@capacitor/cli": "^5.7.0",
     "@capacitor/core": "^5.7.0",
+    "@google/generative-ai": "^0.24.1",
     "firebase": "^12.7.0",
+    "lucide-react": "^0.563.0",
     "next": "16.1.1",
     "react": "19.2.3",
     "react-dom": "19.2.3"
