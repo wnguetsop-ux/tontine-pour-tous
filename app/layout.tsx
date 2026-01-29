@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -19,21 +20,25 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
     <html lang="en">
-      <script src="/app-config.js"></script>
+      <head>
+        <Script
+          src="/app-config.js"
+          strategy="afterInteractive"
+        />
+      </head>
 
-     <body
-  className={`${geistSans.variable} ${geistMono.variable} antialiased`}
->
-  <div className="app-safe-area">
-    {children}
-  </div>
-</body>
-
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
+        <div className="app-safe-area">
+          {children}
+        </div>
+      </body>
     </html>
   );
 }
